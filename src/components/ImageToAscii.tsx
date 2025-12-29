@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Slider } from './ui/slider';
-import { Copy, Download, Upload, X, Sparkles, Image, Shuffle } from 'lucide-react';
+import { Copy, Download, Upload, X, Sparkles, Image, Shuffle, FileCode } from 'lucide-react';
 import { Switch } from './ui/switch';
 import { toast } from 'sonner@2.0.3';
 import { copyToClipboard } from './utils/clipboard';
@@ -829,6 +829,54 @@ export function ImageToAscii() {
     }
   };
 
+  const handleDownloadSVG = () => {
+    if (!asciiOutput) return;
+
+    try {
+      const lines = asciiOutput.split('\n');
+      const fontSize = 12;
+      const lineHeight = 14.4; // 1.2em
+      // Estimate char width for Courier New (monospace is approx 0.6em usually, but let's be generous or use a fixed width font measure if possible. 
+      // For SVG mono, 0.6 * fontSize is a safe-ish estimate for canvas width calcs)
+      const charWidth = fontSize * 0.6;
+
+      // Calculate dimensions (add padding)
+      const maxLineLength = Math.max(...lines.map(line => line.length));
+      const width = (maxLineLength * charWidth) + 40;
+      const height = (lines.length * lineHeight) + 40;
+
+      // Escape special characters for XML
+      const escapeXML = (str: string) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+
+      const content = lines
+        .map((line, i) => `<tspan x="20" dy="${i === 0 ? '1em' : '1.2em'}">${escapeXML(line)}</tspan>`)
+        .join('');
+
+      const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="white"/>
+  <text x="20" y="20" font-family="'Courier New', Courier, monospace" font-size="${fontSize}px" fill="black" xml:space="preserve">
+${content}
+  </text>
+</svg>`;
+
+      const blob = new Blob([svg], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const element = document.createElement('a');
+      element.href = url;
+      element.download = `ascii-art-${Date.now()}.svg`;
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+      URL.revokeObjectURL(url);
+
+      safeToast.success('ASCII art SVG downloaded!');
+    } catch (error) {
+      console.error('SVG export error:', error);
+      safeToast.error('Failed to export SVG');
+    }
+  };
+
   // Show loading while checking browser compatibility
   if (browserSupported === null) {
     return (
@@ -1119,6 +1167,15 @@ export function ImageToAscii() {
               >
                 <Image className="w-4 h-4 mr-2" />
                 Download as PNG
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleDownloadSVG}
+                disabled={!asciiOutput || isProcessing}
+                className="w-full"
+              >
+                <FileCode className="w-4 h-4 mr-2" />
+                Download as SVG
               </Button>
             </div>
 
