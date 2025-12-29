@@ -213,7 +213,7 @@ export function ImageToAscii() {
         }
 
         // Calculate dimensions with improved aspect ratio handling
-        let finalWidth = Math.max(Math.min(width, 200), 10);
+        const finalWidth = Math.max(Math.min(width, 200), 10);
         let finalHeight;
 
         if (preserveRatio) {
