@@ -3,7 +3,7 @@ import { AsciiArtGenerator } from './components/AsciiArtGenerator';
 import { AsciiBanner } from './components/AsciiBanner';
 import { ImageToAscii } from './components/ImageToAscii';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
-import { Toaster } from './components/ui/sonner';
+
 
 export default function App() {
 
@@ -41,7 +41,7 @@ export default function App() {
         </Tabs>
       </div>
 
-      <Toaster />
+
     </div>
   );
 }
