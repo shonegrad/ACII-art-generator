@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Slider } from './ui/slider';
-import { Copy, Download, Upload, X, Sparkles, Image } from 'lucide-react';
+import { Copy, Download, Upload, X, Sparkles, Image, Shuffle } from 'lucide-react';
 import { Switch } from './ui/switch';
 import { toast } from 'sonner@2.0.3';
 import { copyToClipboard } from './utils/clipboard';
@@ -105,6 +105,9 @@ export function ImageToAscii() {
   const [outputWidth, setOutputWidth] = useState([80]);
   const [preserveAspectRatio, setPreserveAspectRatio] = useState(true);
   const [aspectRatioMultiplier, setAspectRatioMultiplier] = useState([0.5]);
+  const [brightness, setBrightness] = useState([1]);
+  const [contrast, setContrast] = useState([1]);
+  const [inverted, setInverted] = useState(false);
   const [imageInfo, setImageInfo] = useState<{ width: number, height: number, aspectRatio: number } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [browserSupported, setBrowserSupported] = useState<boolean | null>(null);
@@ -137,8 +140,17 @@ export function ImageToAscii() {
 
 
 
-  const convertImageToAscii = useCallback((imageUrl: string, width: number, charset: string, preserveRatio: boolean = true, ratioMultiplier: number = 0.5) => {
-    console.log('Starting image conversion...', { imageUrl: imageUrl.substring(0, 50), width, charset, preserveRatio, ratioMultiplier });
+  const convertImageToAscii = useCallback((
+    imageUrl: string,
+    width: number,
+    charset: string,
+    preserveRatio: boolean = true,
+    ratioMultiplier: number = 0.5,
+    brightnessValue: number = 1,
+    contrastValue: number = 1,
+    isInverted: boolean = false
+  ) => {
+    console.log('Starting image conversion...', { width, charset, preserveRatio, ratioMultiplier, brightnessValue, contrastValue, isInverted });
 
     // Check browser support first
     if (!browserSupported) {
@@ -183,6 +195,8 @@ export function ImageToAscii() {
       setIsProcessing(false);
       return;
     }
+
+    img.crossOrigin = 'Anonymous';
 
     img.onload = () => {
       try {
@@ -273,7 +287,23 @@ export function ImageToAscii() {
             const b = pixels[offset + 2] || 0;
 
             // Convert to grayscale using luminance formula
-            const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+            let gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+
+            // Apply contrast
+            gray = ((gray - 128) * contrastValue) + 128;
+
+            // Apply brightness (add/subtract value properly scaled)
+            // Brightness 1 is neutral. 0 is black, 2 is white(-ish).
+            // Map 0-2 to -128 to 128 offset approximately
+            gray = gray + ((brightnessValue - 1) * 255);
+
+            // Clamp values
+            gray = Math.max(0, Math.min(255, gray));
+
+            // Apply invert
+            if (isInverted) {
+              gray = 255 - gray;
+            }
 
             // Map grayscale to character (ensure valid index)
             const charIndex = Math.min(Math.floor((gray / 255) * (chars.length - 1)), chars.length - 1);
@@ -363,7 +393,7 @@ export function ImageToAscii() {
   const handleAspectRatioToggle = (checked: boolean) => {
     setPreserveAspectRatio(checked);
     if (selectedImage && !isProcessing) {
-      convertImageToAscii(selectedImage, outputWidth[0], charSet, checked, aspectRatioMultiplier[0]);
+      convertImageToAscii(selectedImage, outputWidth[0], charSet, checked, aspectRatioMultiplier[0], brightness[0], contrast[0], inverted);
     }
   };
 
@@ -375,7 +405,7 @@ export function ImageToAscii() {
         clearTimeout(processingTimeoutRef.current);
       }
       processingTimeoutRef.current = setTimeout(() => {
-        convertImageToAscii(selectedImage, outputWidth[0], charSet, preserveAspectRatio, newValue[0]);
+        convertImageToAscii(selectedImage, outputWidth[0], charSet, preserveAspectRatio, newValue[0], brightness[0], contrast[0], inverted);
       }, 300);
     }
   };
@@ -465,7 +495,7 @@ export function ImageToAscii() {
       setSelectedImage(imageUrl);
 
       console.log('Starting conversion...');
-      convertImageToAscii(imageUrl, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0]);
+      convertImageToAscii(imageUrl, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], contrast[0], inverted);
 
     } catch (error) {
       console.error('Image processing error:', error);
@@ -509,7 +539,7 @@ export function ImageToAscii() {
         clearTimeout(processingTimeoutRef.current);
       }
       processingTimeoutRef.current = setTimeout(() => {
-        convertImageToAscii(selectedImage, newWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0]);
+        convertImageToAscii(selectedImage, newWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], contrast[0], inverted);
       }, 300);
     }
   };
@@ -517,7 +547,7 @@ export function ImageToAscii() {
   const handleCharSetChange = (newCharSet: string) => {
     setCharSet(newCharSet);
     if (selectedImage && !isProcessing) {
-      convertImageToAscii(selectedImage, outputWidth[0], newCharSet, preserveAspectRatio, aspectRatioMultiplier[0]);
+      convertImageToAscii(selectedImage, outputWidth[0], newCharSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], contrast[0], inverted);
     }
   };
 
@@ -606,13 +636,68 @@ export function ImageToAscii() {
       console.log('Sample image created successfully, data URL length:', sampleImageUrl.length);
 
       setSelectedImage(sampleImageUrl);
-      convertImageToAscii(sampleImageUrl, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0]);
+      convertImageToAscii(sampleImageUrl, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], contrast[0], inverted);
       safeToast.success('Sample image loaded successfully');
 
     } catch (error) {
       console.error('Sample image creation error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       safeToast.error(`Failed to create sample image: ${errorMessage}`);
+    }
+  };
+
+  const handleRandomImage = async () => {
+    if (isProcessing) return;
+
+    try {
+      setIsProcessing(true);
+      // Use a random ID to prevent caching issues
+      const randomId = Math.floor(Math.random() * 1000);
+      const imageUrl = `https://picsum.photos/id/${randomId}/800/600`;
+
+      console.log('Fetching random image:', imageUrl);
+
+      // Fetch as blob to avoid some potential CORS issues with canvas taint
+      const response = await fetch(imageUrl);
+      if (!response.ok) throw new Error('Failed to fetch random image');
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+
+      setSelectedImage(objectUrl);
+      convertImageToAscii(objectUrl, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], contrast[0], inverted);
+
+    } catch (error) {
+      console.error('Random image error:', error);
+      safeToast.error('Failed to load random image');
+      setIsProcessing(false);
+    }
+  };
+
+  const handleBrightnessChange = (value: number[]) => {
+    setBrightness(value);
+    if (selectedImage && !isProcessing) {
+      if (processingTimeoutRef.current) clearTimeout(processingTimeoutRef.current);
+      processingTimeoutRef.current = setTimeout(() => {
+        convertImageToAscii(selectedImage, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], value[0], contrast[0], inverted);
+      }, 300);
+    }
+  };
+
+  const handleContrastChange = (value: number[]) => {
+    setContrast(value);
+    if (selectedImage && !isProcessing) {
+      if (processingTimeoutRef.current) clearTimeout(processingTimeoutRef.current);
+      processingTimeoutRef.current = setTimeout(() => {
+        convertImageToAscii(selectedImage, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], value[0], inverted);
+      }, 300);
+    }
+  };
+
+  const handleInvertToggle = (checked: boolean) => {
+    setInverted(checked);
+    if (selectedImage && !isProcessing) {
+      convertImageToAscii(selectedImage, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], contrast[0], checked);
     }
   };
 
@@ -821,10 +906,16 @@ export function ImageToAscii() {
                     <p className="text-sm text-muted-foreground">Click to upload or drag & drop</p>
                     <p className="text-xs text-muted-foreground mt-1">JPG, PNG, GIF, WebP</p>
                   </div>
-                  <Button variant="outline" onClick={handleTrySample} className="w-full">
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Try Sample
-                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button variant="outline" onClick={handleTrySample} className="w-full">
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Sample
+                    </Button>
+                    <Button variant="outline" onClick={handleRandomImage} className="w-full">
+                      <Shuffle className="w-4 h-4 mr-2" />
+                      Random
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -843,22 +934,22 @@ export function ImageToAscii() {
                       <X className="w-3 h-3" />
                     </Button>
                   </div>
-                  <div className="grid grid-cols-1 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => fileInputRef.current?.click()}
                     >
                       <Upload className="w-4 h-4 mr-2" />
-                      New Image
+                      New
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={handleTrySample}
+                      onClick={handleRandomImage}
                     >
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Try Sample
+                      <Shuffle className="w-4 h-4 mr-2" />
+                      Random
                     </Button>
                   </div>
                 </div>
@@ -888,6 +979,49 @@ export function ImageToAscii() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-4 pt-2 border-t">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">Adjustments</Label>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="invert-toggle" className="text-xs">Invert</Label>
+                    <Switch
+                      id="invert-toggle"
+                      checked={inverted}
+                      onCheckedChange={handleInvertToggle}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label htmlFor="brightness-slider">Brightness: {brightness[0].toFixed(1)}</Label>
+                  </div>
+                  <Slider
+                    id="brightness-slider"
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    value={brightness}
+                    onValueChange={handleBrightnessChange}
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label htmlFor="contrast-slider">Contrast: {contrast[0].toFixed(1)}</Label>
+                  </div>
+                  <Slider
+                    id="contrast-slider"
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    value={contrast}
+                    onValueChange={handleContrastChange}
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
