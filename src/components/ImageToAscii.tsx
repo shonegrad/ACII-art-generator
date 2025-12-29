@@ -301,7 +301,7 @@ export function ImageToAscii() {
             gray = Math.max(0, Math.min(255, gray));
 
             // Apply invert
-            if (isInverted) {
+            if (!isInverted) {
               gray = 255 - gray;
             }
 
