@@ -53,17 +53,52 @@ npm run build
 
 ## Port/Process Hygiene
 
-**Rule**: Before starting the dev server, check for existing processes on port 3000.
+> **⚠️ MANDATORY**: Always check ports and reuse browser tabs before starting development.
+
+### Check for Running Processes
+
+**Before starting the dev server**, always check if port 3000 is already in use:
 
 ```bash
 # Check if port 3000 is in use
 lsof -i :3000
 
-# Kill existing process if needed
+# If processes are found, kill them
 kill -9 $(lsof -ti :3000)
+
+# Verify port is now free
+lsof -i :3000 || echo "Port 3000 is free"
 ```
 
-**Rule**: Reuse existing browser tabs instead of opening new ones.
+### Prevent Duplicate Instances
+
+**Rule**: Never run multiple dev server instances. Before starting:
+
+1. Check terminal for existing running servers
+2. Check Activity Monitor / `ps aux | grep node` for orphan processes
+3. Kill existing processes before starting a new one
+
+```bash
+# One-liner to safely start (kills existing, then starts new)
+kill -9 $(lsof -ti :3000) 2>/dev/null; npm run dev
+```
+
+### Browser Tab Hygiene
+
+> **⚠️ MANDATORY**: Reuse existing browser tabs instead of opening new ones.
+
+**Rules**:
+
+- Check if `localhost:3000` is already open in a browser tab
+- If open, refresh that tab instead of opening a new one
+- Only open a new tab if no existing tab is available
+- Close unused development tabs to reduce memory usage
+
+**For AI Agents**:
+
+- Before using `open_browser_url`, check if the page is already open
+- Use page refresh instead of opening new URLs when possible
+- Avoid spawning multiple browser windows for the same task
 
 ---
 
