@@ -4,7 +4,6 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Textarea } from './ui/textarea';
 import { Copy, Download, Image } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { copyToClipboard } from './utils/clipboard';
@@ -153,7 +152,7 @@ export function AsciiArtGenerator() {
   const generateAscii = useCallback((text: string, font: keyof typeof ASCII_FONTS) => {
     try {
       console.log('Generating ASCII for:', text, 'with font:', font);
-      
+
       if (!text.trim()) {
         setAsciiOutput('');
         return;
@@ -208,7 +207,7 @@ export function AsciiArtGenerator() {
     }
 
     const result = await copyToClipboard(asciiOutput);
-    
+
     if (result.success) {
       switch (result.method) {
         case 'modern':
@@ -255,10 +254,10 @@ export function AsciiArtGenerator() {
     // Split ASCII into lines and calculate dimensions
     const lines = asciiOutput.split('\n');
     const maxLineLength = Math.max(...lines.map(line => line.length));
-    
+
     // Measure character width
     const charWidth = ctx.measureText('M').width;
-    
+
     // Set canvas dimensions with padding
     const padding = 30;
     tempCanvas.width = maxLineLength * charWidth + padding * 2;

@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Slider } from './ui/slider';
-import { Copy, Download, Upload, X, Sparkles, Image, ToggleLeft } from 'lucide-react';
+import { Copy, Download, Upload, X, Sparkles, Image } from 'lucide-react';
 import { Switch } from './ui/switch';
 import { toast } from 'sonner@2.0.3';
 import { copyToClipboard } from './utils/clipboard';
@@ -105,7 +105,7 @@ export function ImageToAscii() {
   const [outputWidth, setOutputWidth] = useState([80]);
   const [preserveAspectRatio, setPreserveAspectRatio] = useState(true);
   const [aspectRatioMultiplier, setAspectRatioMultiplier] = useState([0.5]);
-  const [imageInfo, setImageInfo] = useState<{width: number, height: number, aspectRatio: number} | null>(null);
+  const [imageInfo, setImageInfo] = useState<{ width: number, height: number, aspectRatio: number } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [browserSupported, setBrowserSupported] = useState<boolean | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -115,16 +115,16 @@ export function ImageToAscii() {
   // Check browser compatibility on mount
   useEffect(() => {
     try {
-      const isSupported = 
+      const isSupported =
         typeof document !== 'undefined' &&
         typeof HTMLCanvasElement !== 'undefined' &&
         typeof HTMLImageElement !== 'undefined' &&
         typeof FileReader !== 'undefined' &&
         typeof URL !== 'undefined' &&
         typeof Blob !== 'undefined';
-        
+
       setBrowserSupported(isSupported);
-      
+
       if (!isSupported) {
         console.warn('Browser does not support required APIs for image processing');
         safeToast.error('Your browser does not support image processing features');
@@ -139,27 +139,27 @@ export function ImageToAscii() {
 
   const convertImageToAscii = useCallback((imageUrl: string, width: number, charset: string, preserveRatio: boolean = true, ratioMultiplier: number = 0.5) => {
     console.log('Starting image conversion...', { imageUrl: imageUrl.substring(0, 50), width, charset, preserveRatio, ratioMultiplier });
-    
+
     // Check browser support first
     if (!browserSupported) {
       safeToast.error('Image processing not supported in this browser');
       return;
     }
-    
+
     // Clear any existing timeout
     if (processingTimeoutRef.current) {
       clearTimeout(processingTimeoutRef.current);
     }
 
     setIsProcessing(true);
-    
+
     // Safety timeout to prevent infinite processing
     const safetyTimeout = setTimeout(() => {
       console.warn('Processing timeout reached, resetting...');
       setIsProcessing(false);
       safeToast.error('Processing timeout - please try again');
     }, 10000); // 10 second timeout
-    
+
     // Safely create Image element using createElement as fallback
     let img;
     try {
@@ -167,15 +167,15 @@ export function ImageToAscii() {
       if (typeof document === 'undefined') {
         throw new Error('Document not available');
       }
-      
+
       // Try document.createElement first (more reliable)
       img = document.createElement('img');
-      
+
       // Verify it's actually an HTMLImageElement
       if (!(img instanceof HTMLImageElement)) {
         throw new Error('Created element is not an HTMLImageElement');
       }
-      
+
     } catch (domError) {
       console.error('Image element creation error:', domError);
       safeToast.error('Failed to create image element - browser compatibility issue');
@@ -183,11 +183,11 @@ export function ImageToAscii() {
       setIsProcessing(false);
       return;
     }
-    
+
     img.onload = () => {
       try {
         console.log('Image loaded successfully. Dimensions:', img.width, 'x', img.height);
-        
+
         // Store image info for display
         const originalAspectRatio = img.height / img.width;
         setImageInfo({
@@ -195,7 +195,7 @@ export function ImageToAscii() {
           height: img.height,
           aspectRatio: originalAspectRatio
         });
-        
+
         const canvas = canvasRef.current;
         if (!canvas) {
           console.error('Canvas ref is null');
@@ -215,7 +215,7 @@ export function ImageToAscii() {
         // Calculate dimensions with improved aspect ratio handling
         let finalWidth = Math.max(Math.min(width, 200), 10);
         let finalHeight;
-        
+
         if (preserveRatio) {
           // Use the aspect ratio multiplier to account for character height/width ratio
           // Characters are typically taller than they are wide, so we need to adjust
@@ -229,7 +229,7 @@ export function ImageToAscii() {
         // Ensure reasonable dimensions
         finalHeight = Math.max(Math.min(finalHeight, 200), 10);
 
-        console.log('Processing dimensions - Width:', finalWidth, 'Height:', finalHeight, 'Original Aspect Ratio:', originalAspectRatio.toFixed(3), 'Adjusted Ratio:', (finalHeight/finalWidth).toFixed(3));
+        console.log('Processing dimensions - Width:', finalWidth, 'Height:', finalHeight, 'Original Aspect Ratio:', originalAspectRatio.toFixed(3), 'Adjusted Ratio:', (finalHeight / finalWidth).toFixed(3));
 
         canvas.width = finalWidth;
         canvas.height = finalHeight;
@@ -237,7 +237,7 @@ export function ImageToAscii() {
         // Clear canvas and draw image
         ctx.clearRect(0, 0, finalWidth, finalHeight);
         ctx.drawImage(img, 0, 0, finalWidth, finalHeight);
-        
+
         let imageData;
         try {
           imageData = ctx.getImageData(0, 0, finalWidth, finalHeight);
@@ -248,7 +248,7 @@ export function ImageToAscii() {
           setIsProcessing(false);
           return;
         }
-        
+
         const pixels = imageData.data;
         const charSet = ASCII_CHAR_SETS[charset as keyof typeof ASCII_CHAR_SETS];
         if (!charSet) {
@@ -257,13 +257,13 @@ export function ImageToAscii() {
           setIsProcessing(false);
           return;
         }
-        
+
         const chars = charSet.chars;
         let ascii = '';
 
         // Process pixels - ensuring rectangular output
         const lines: string[] = [];
-        
+
         for (let y = 0; y < finalHeight; y++) {
           let line = '';
           for (let x = 0; x < finalWidth; x++) {
@@ -271,32 +271,32 @@ export function ImageToAscii() {
             const r = pixels[offset] || 0;
             const g = pixels[offset + 1] || 0;
             const b = pixels[offset + 2] || 0;
-            
+
             // Convert to grayscale using luminance formula
             const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-            
+
             // Map grayscale to character (ensure valid index)
             const charIndex = Math.min(Math.floor((gray / 255) * (chars.length - 1)), chars.length - 1);
             const selectedChar = chars[chars.length - 1 - charIndex]; // Invert for dark-on-light
             line += selectedChar || ' ';
           }
-          
+
           // Ensure line is exactly finalWidth characters
           if (line.length < finalWidth) {
             line = line.padEnd(finalWidth, ' ');
           } else if (line.length > finalWidth) {
             line = line.substring(0, finalWidth);
           }
-          
+
           lines.push(line);
         }
-        
+
         // Join lines and ensure rectangular format
         ascii = lines.join('\n');
 
         // Validate rectangular format and get final ASCII
         const asciiLines = ascii.split('\n').filter(line => line.length > 0);
-        
+
         // Ensure all lines have the same length (rectangular format)
         const targetWidth = finalWidth;
         const normalizedLines = asciiLines.map(line => {
@@ -307,7 +307,7 @@ export function ImageToAscii() {
           }
           return line;
         });
-        
+
         // Ensure we have the expected number of lines
         while (normalizedLines.length < finalHeight) {
           normalizedLines.push(' '.repeat(targetWidth));
@@ -315,13 +315,13 @@ export function ImageToAscii() {
         if (normalizedLines.length > finalHeight) {
           normalizedLines.splice(finalHeight);
         }
-        
+
         const finalAscii = normalizedLines.join('\n');
         const actualWidth = normalizedLines.length > 0 ? normalizedLines[0].length : 0;
         const actualHeight = normalizedLines.length;
-        
+
         console.log('ASCII processing complete. Length:', finalAscii.length, 'Target dimensions:', finalWidth, 'x', finalHeight, 'Actual dimensions:', actualWidth, 'x', actualHeight);
-        
+
         // Verify rectangular format
         const allLinesSameLength = normalizedLines.every(line => line.length === actualWidth);
         if (!allLinesSameLength) {
@@ -333,7 +333,7 @@ export function ImageToAscii() {
         }
         clearTimeout(safetyTimeout);
         setIsProcessing(false);
-        
+
         if (finalAscii.length === 0) {
           safeToast.error('No ASCII output generated');
           console.error('Empty ASCII output');
@@ -395,7 +395,7 @@ export function ImageToAscii() {
       safeToast.error('File processing not supported in this browser');
       return;
     }
-    
+
     if (isProcessing) {
       safeToast.info('Please wait for current processing to complete');
       return;
@@ -417,12 +417,12 @@ export function ImageToAscii() {
 
     try {
       console.log('Creating FileReader...');
-      
+
       // Check if FileReader is available and can be constructed
       if (typeof FileReader === 'undefined') {
         throw new Error('FileReader is not supported in this browser');
       }
-      
+
       let reader;
       try {
         reader = new FileReader();
@@ -430,7 +430,7 @@ export function ImageToAscii() {
         console.error('FileReader constructor error:', constructorError);
         throw new Error('Failed to create FileReader instance');
       }
-      
+
       // Create promise to handle async FileReader
       const imageUrl = await new Promise<string>((resolve, reject) => {
         reader.onload = (event) => {
@@ -446,7 +446,7 @@ export function ImageToAscii() {
             reject(err);
           }
         };
-        
+
         reader.onerror = () => {
           const error = reader.error || new Error('FileReader failed');
           console.error('FileReader error:', error);
@@ -456,17 +456,17 @@ export function ImageToAscii() {
         reader.onabort = () => {
           reject(new Error('File reading was aborted'));
         };
-        
+
         // Start reading the file
         reader.readAsDataURL(file);
       });
 
       console.log('Setting selected image...');
       setSelectedImage(imageUrl);
-      
+
       console.log('Starting conversion...');
       convertImageToAscii(imageUrl, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0]);
-      
+
     } catch (error) {
       console.error('Image processing error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -477,7 +477,7 @@ export function ImageToAscii() {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    
+
     // Process file without await to avoid potential async issues
     processFile(file).catch((error) => {
       console.error('File upload handler error:', error);
@@ -490,12 +490,12 @@ export function ImageToAscii() {
     if (processingTimeoutRef.current) {
       clearTimeout(processingTimeoutRef.current);
     }
-    
+
     setSelectedImage(null);
     setAsciiOutput('');
     setImageInfo(null);
     setIsProcessing(false);
-    
+
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -526,7 +526,7 @@ export function ImageToAscii() {
       safeToast.error('Sample image not supported in this browser');
       return;
     }
-    
+
     if (isProcessing) {
       safeToast.info('Please wait for current processing to complete');
       return;
@@ -534,7 +534,7 @@ export function ImageToAscii() {
 
     try {
       console.log('Creating sample image...');
-      
+
       // Check if canvas is supported
       if (typeof document.createElement !== 'function') {
         throw new Error('Canvas not supported');
@@ -546,25 +546,25 @@ export function ImageToAscii() {
         if (typeof document === 'undefined') {
           throw new Error('Document not available');
         }
-        
+
         canvas = document.createElement('canvas');
-        
+
         // Verify it's actually an HTMLCanvasElement
         if (!(canvas instanceof HTMLCanvasElement)) {
           throw new Error('Created element is not an HTMLCanvasElement');
         }
-        
+
         ctx = canvas.getContext('2d');
-        
+
         if (!ctx || !(ctx instanceof CanvasRenderingContext2D)) {
           throw new Error('Failed to get 2D rendering context');
         }
-        
+
       } catch (canvasError) {
         console.error('Canvas creation error:', canvasError);
         throw new Error('Failed to create canvas element - browser compatibility issue');
       }
-      
+
       if (!ctx) {
         throw new Error('Cannot get canvas 2D context');
       }
@@ -572,43 +572,43 @@ export function ImageToAscii() {
       // Create a simple reliable test image
       canvas.width = 200;
       canvas.height = 150;
-      
+
       // White background
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
+
       // Create simple black to white gradient
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
       gradient.addColorStop(0, '#000000');
       gradient.addColorStop(0.5, '#666666');
       gradient.addColorStop(1, '#ffffff');
-      
+
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
+
       // Add simple shapes for better ASCII conversion
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(20, 20, 40, 40);
-      
+
       ctx.fillStyle = '#000000';
       ctx.fillRect(140, 20, 40, 40);
-      
+
       ctx.fillStyle = '#666666';
       ctx.fillRect(80, 80, 40, 40);
 
       // Convert to data URL
       const sampleImageUrl = canvas.toDataURL('image/png');
-      
+
       if (!sampleImageUrl || !sampleImageUrl.startsWith('data:')) {
         throw new Error('Failed to generate sample image data');
       }
 
       console.log('Sample image created successfully, data URL length:', sampleImageUrl.length);
-      
+
       setSelectedImage(sampleImageUrl);
       convertImageToAscii(sampleImageUrl, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0]);
       safeToast.success('Sample image loaded successfully');
-      
+
     } catch (error) {
       console.error('Sample image creation error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -623,7 +623,7 @@ export function ImageToAscii() {
     }
 
     const result = await copyToClipboard(asciiOutput);
-    
+
     if (result.success) {
       switch (result.method) {
         case 'modern':
@@ -648,7 +648,7 @@ export function ImageToAscii() {
       if (typeof document === 'undefined' || typeof URL === 'undefined' || typeof Blob === 'undefined') {
         throw new Error('Browser does not support file downloads');
       }
-      
+
       const element = document.createElement('a');
       const file = new Blob([asciiOutput], { type: 'text/plain' });
       element.href = URL.createObjectURL(file);
@@ -674,48 +674,48 @@ export function ImageToAscii() {
 
       // Create a temporary canvas for rendering
       const tempCanvas = document.createElement('canvas');
-      
+
       if (!(tempCanvas instanceof HTMLCanvasElement)) {
         throw new Error('Failed to create canvas element');
       }
-      
+
       const ctx = tempCanvas.getContext('2d');
       if (!ctx || !(ctx instanceof CanvasRenderingContext2D)) {
         throw new Error('Failed to get 2D rendering context');
       }
 
-    // Set up font and measurement
-    const fontSize = 12;
-    const lineHeight = fontSize * 1.2;
-    const fontFamily = 'Courier New, monospace';
-    ctx.font = `${fontSize}px ${fontFamily}`;
+      // Set up font and measurement
+      const fontSize = 12;
+      const lineHeight = fontSize * 1.2;
+      const fontFamily = 'Courier New, monospace';
+      ctx.font = `${fontSize}px ${fontFamily}`;
 
-    // Split ASCII into lines and calculate dimensions
-    const lines = asciiOutput.split('\n');
-    const maxLineLength = Math.max(...lines.map(line => line.length));
-    
-    // Measure character width
-    const charWidth = ctx.measureText('M').width;
-    
-    // Set canvas dimensions with padding
-    const padding = 20;
-    tempCanvas.width = maxLineLength * charWidth + padding * 2;
-    tempCanvas.height = lines.length * lineHeight + padding * 2;
+      // Split ASCII into lines and calculate dimensions
+      const lines = asciiOutput.split('\n');
+      const maxLineLength = Math.max(...lines.map(line => line.length));
 
-    // Set background
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      // Measure character width
+      const charWidth = ctx.measureText('M').width;
 
-    // Set text properties
-    ctx.fillStyle = '#000000';
-    ctx.font = `${fontSize}px ${fontFamily}`;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
+      // Set canvas dimensions with padding
+      const padding = 20;
+      tempCanvas.width = maxLineLength * charWidth + padding * 2;
+      tempCanvas.height = lines.length * lineHeight + padding * 2;
 
-    // Render each line
-    lines.forEach((line, index) => {
-      ctx.fillText(line, padding, padding + index * lineHeight);
-    });
+      // Set background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+      // Set text properties
+      ctx.fillStyle = '#000000';
+      ctx.font = `${fontSize}px ${fontFamily}`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+
+      // Render each line
+      lines.forEach((line, index) => {
+        ctx.fillText(line, padding, padding + index * lineHeight);
+      });
 
       // Convert to blob and download
       tempCanvas.toBlob((blob) => {
@@ -737,7 +737,7 @@ export function ImageToAscii() {
           safeToast.error('Failed to download PNG file');
         }
       }, 'image/png');
-      
+
     } catch (error) {
       console.error('PNG generation error:', error);
       safeToast.error('Failed to generate PNG - browser compatibility issue');
@@ -766,7 +766,7 @@ export function ImageToAscii() {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
-              Your browser does not support the required features for image to ASCII conversion. 
+              Your browser does not support the required features for image to ASCII conversion.
               Please try using a modern browser like Chrome, Firefox, or Safari.
             </p>
           </CardContent>
@@ -789,7 +789,7 @@ export function ImageToAscii() {
               <Label>Upload Image</Label>
               {!selectedImage ? (
                 <div className="space-y-3">
-                  <div 
+                  <div
                     className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-muted-foreground/50 transition-colors"
                     onClick={() => fileInputRef.current?.click()}
                     onDragOver={(e) => {
@@ -829,9 +829,9 @@ export function ImageToAscii() {
               ) : (
                 <div className="space-y-3">
                   <div className="relative">
-                    <img 
-                      src={selectedImage} 
-                      alt="Selected" 
+                    <img
+                      src={selectedImage}
+                      alt="Selected"
                       className="w-full h-auto max-h-48 object-contain rounded-lg border bg-muted/20"
                     />
                     <Button
@@ -912,7 +912,7 @@ export function ImageToAscii() {
                     onCheckedChange={handleAspectRatioToggle}
                   />
                 </div>
-                
+
                 {preserveAspectRatio && (
                   <div className="space-y-2">
                     <Label htmlFor="ratio-slider">Character Ratio: {aspectRatioMultiplier[0].toFixed(2)}</Label>

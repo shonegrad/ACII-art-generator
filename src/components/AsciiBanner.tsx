@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Copy, Download, Image } from 'lucide-react';
@@ -14,10 +13,10 @@ const BANNER_STYLES = {
     generate: (text: string) => {
       const lines = text.split('\n').filter(line => line.trim());
       if (lines.length === 0) return '';
-      
+
       const maxLength = Math.max(...lines.map(line => line.length));
       const border = '+' + '-'.repeat(maxLength + 2) + '+';
-      
+
       return [
         border,
         ...lines.map(line => '| ' + line.padEnd(maxLength) + ' |'),
@@ -30,11 +29,11 @@ const BANNER_STYLES = {
     generate: (text: string) => {
       const lines = text.split('\n').filter(line => line.trim());
       if (lines.length === 0) return '';
-      
+
       const maxLength = Math.max(...lines.map(line => line.length));
       const topBorder = '╔' + '═'.repeat(maxLength + 2) + '╗';
       const bottomBorder = '╚' + '═'.repeat(maxLength + 2) + '╝';
-      
+
       return [
         topBorder,
         ...lines.map(line => '║ ' + line.padEnd(maxLength) + ' ║'),
@@ -47,11 +46,11 @@ const BANNER_STYLES = {
     generate: (text: string) => {
       const lines = text.split('\n').filter(line => line.trim());
       if (lines.length === 0) return '';
-      
+
       const maxLength = Math.max(...lines.map(line => line.length));
       const topBorder = '╭' + '─'.repeat(maxLength + 2) + '╮';
       const bottomBorder = '╰' + '─'.repeat(maxLength + 2) + '╯';
-      
+
       return [
         topBorder,
         ...lines.map(line => '│ ' + line.padEnd(maxLength) + ' │'),
@@ -64,10 +63,10 @@ const BANNER_STYLES = {
     generate: (text: string) => {
       const lines = text.split('\n').filter(line => line.trim());
       if (lines.length === 0) return '';
-      
+
       const maxLength = Math.max(...lines.map(line => line.length));
       const border = '*'.repeat(maxLength + 4);
-      
+
       return [
         border,
         ...lines.map(line => '* ' + line.padEnd(maxLength) + ' *'),
@@ -80,10 +79,10 @@ const BANNER_STYLES = {
     generate: (text: string) => {
       const lines = text.split('\n').filter(line => line.trim());
       if (lines.length === 0) return '';
-      
+
       const maxLength = Math.max(...lines.map(line => line.length));
       const border = '#'.repeat(maxLength + 4);
-      
+
       return [
         border,
         ...lines.map(line => '# ' + line.padEnd(maxLength) + ' #'),
@@ -96,11 +95,11 @@ const BANNER_STYLES = {
     generate: (text: string) => {
       const lines = text.split('\n').filter(line => line.trim());
       if (lines.length === 0) return '';
-      
+
       const maxLength = Math.max(...lines.map(line => line.length));
       const topBorder = '┌' + '─'.repeat(maxLength + 2) + '┐';
       const bottomBorder = '└' + '─'.repeat(maxLength + 2) + '┘';
-      
+
       return [
         topBorder,
         ...lines.map(line => '│ ' + line.padEnd(maxLength) + ' │'),
@@ -118,7 +117,7 @@ export function AsciiBanner() {
   const generateBanner = React.useCallback((text: string, styleKey: string) => {
     try {
       console.log('Generating banner for:', text, 'with style:', styleKey);
-      
+
       if (!text.trim()) {
         setBannerOutput('');
         return;
@@ -157,7 +156,7 @@ export function AsciiBanner() {
     }
 
     const result = await copyToClipboard(bannerOutput);
-    
+
     if (result.success) {
       switch (result.method) {
         case 'modern':
@@ -204,10 +203,10 @@ export function AsciiBanner() {
     // Split ASCII into lines and calculate dimensions
     const lines = bannerOutput.split('\n');
     const maxLineLength = Math.max(...lines.map(line => line.length));
-    
+
     // Measure character width
     const charWidth = ctx.measureText('M').width;
-    
+
     // Set canvas dimensions with padding
     const padding = 25;
     tempCanvas.width = maxLineLength * charWidth + padding * 2;
