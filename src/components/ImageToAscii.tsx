@@ -1,12 +1,16 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useTheme } from 'next-themes';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Slider } from './ui/slider';
-import { Copy, Download, Upload, X, Sparkles, Image, Shuffle, FileCode } from 'lucide-react';
+import { ScrollArea } from './ui/scroll-area';
+import { Separator } from './ui/separator';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
+import { Copy, Download, Upload, X, Sparkles, Image as ImageIcon, Shuffle, FileCode, Palette, Monitor, Sun, Moon } from 'lucide-react';
 import { Switch } from './ui/switch';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { copyToClipboard } from './utils/clipboard';
 
 // Safe toast wrapper to handle potential import issues
@@ -14,22 +18,22 @@ const safeToast = {
   success: (message: string) => {
     try {
       toast.success(message);
-    } catch (error) {
-      console.log('SUCCESS:', message);
+    } catch {
+      console.warn('SUCCESS:', message);
     }
   },
   error: (message: string) => {
     try {
       toast.error(message);
-    } catch (error) {
+    } catch {
       console.error('ERROR:', message);
     }
   },
   info: (message: string) => {
     try {
       toast.info(message);
-    } catch (error) {
-      console.log('INFO:', message);
+    } catch {
+      console.warn('INFO:', message);
     }
   }
 };
@@ -98,16 +102,33 @@ const ASCII_CHAR_SETS = {
   }
 };
 
+// Format ratio presets
+const FORMAT_RATIOS = {
+  free: { name: 'Free', ratio: null },
+  '16:9': { name: '16:9 (Widescreen)', ratio: 16 / 9 },
+  '4:3': { name: '4:3 (Classic)', ratio: 4 / 3 },
+  '3:2': { name: '3:2 (Photo)', ratio: 3 / 2 },
+  '1:1': { name: '1:1 (Square)', ratio: 1 },
+  '2:3': { name: '2:3 (Portrait)', ratio: 2 / 3 },
+  '3:4': { name: '3:4 (Portrait)', ratio: 3 / 4 },
+  '9:16': { name: '9:16 (Vertical)', ratio: 9 / 16 },
+};
+
 export function ImageToAscii() {
+  const { theme, setTheme } = useTheme();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [asciiOutput, setAsciiOutput] = useState('');
+  const [coloredAsciiOutput, setColoredAsciiOutput] = useState<Array<Array<{ char: string; color: string }>>>([]);
   const [charSet, setCharSet] = useState('standard');
-  const [outputWidth, setOutputWidth] = useState([80]);
+  const [outputWidth, setOutputWidth] = useState([120]);
+  const [,] = useState([40]);
   const [preserveAspectRatio, setPreserveAspectRatio] = useState(true);
   const [aspectRatioMultiplier, setAspectRatioMultiplier] = useState([0.5]);
   const [brightness, setBrightness] = useState([1]);
   const [contrast, setContrast] = useState([1]);
   const [inverted, setInverted] = useState(false);
+  const [colorMode, setColorMode] = useState(true);
+  const [formatRatio, setFormatRatio] = useState('free');
   const [imageInfo, setImageInfo] = useState<{ width: number, height: number, aspectRatio: number } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [browserSupported, setBrowserSupported] = useState<boolean | null>(null);
@@ -148,7 +169,8 @@ export function ImageToAscii() {
     ratioMultiplier: number = 0.5,
     brightnessValue: number = 1,
     contrastValue: number = 1,
-    isInverted: boolean = false
+    isInverted: boolean = false,
+    isColorMode: boolean = false
   ) => {
     console.log('Starting image conversion...', { width, charset, preserveRatio, ratioMultiplier, brightnessValue, contrastValue, isInverted });
 
@@ -277,9 +299,11 @@ export function ImageToAscii() {
 
         // Process pixels - ensuring rectangular output
         const lines: string[] = [];
+        const colorLines: Array<Array<{ char: string; color: string }>> = [];
 
         for (let y = 0; y < finalHeight; y++) {
           let line = '';
+          const colorLine: Array<{ char: string; color: string }> = [];
           for (let x = 0; x < finalWidth; x++) {
             const offset = (y * finalWidth + x) * 4;
             const r = pixels[offset] || 0;
@@ -309,6 +333,14 @@ export function ImageToAscii() {
             const charIndex = Math.min(Math.floor((gray / 255) * (chars.length - 1)), chars.length - 1);
             const selectedChar = chars[chars.length - 1 - charIndex]; // Invert for dark-on-light
             line += selectedChar || ' ';
+
+            // Store color data for colored mode
+            if (isColorMode) {
+              colorLine.push({
+                char: selectedChar || ' ',
+                color: `rgb(${r}, ${g}, ${b})`
+              });
+            }
           }
 
           // Ensure line is exactly finalWidth characters
@@ -319,6 +351,9 @@ export function ImageToAscii() {
           }
 
           lines.push(line);
+          if (isColorMode) {
+            colorLines.push(colorLine);
+          }
         }
 
         // Join lines and ensure rectangular format
@@ -361,6 +396,13 @@ export function ImageToAscii() {
         } else {
           setAsciiOutput(finalAscii);
         }
+
+        // Store colored output if in color mode
+        if (isColorMode) {
+          setColoredAsciiOutput(colorLines);
+        } else {
+          setColoredAsciiOutput([]);
+        }
         clearTimeout(safetyTimeout);
         setIsProcessing(false);
 
@@ -393,7 +435,7 @@ export function ImageToAscii() {
   const handleAspectRatioToggle = (checked: boolean) => {
     setPreserveAspectRatio(checked);
     if (selectedImage && !isProcessing) {
-      convertImageToAscii(selectedImage, outputWidth[0], charSet, checked, aspectRatioMultiplier[0], brightness[0], contrast[0], inverted);
+      convertImageToAscii(selectedImage, outputWidth[0], charSet, checked, aspectRatioMultiplier[0], brightness[0], contrast[0], inverted, colorMode);
     }
   };
 
@@ -405,7 +447,7 @@ export function ImageToAscii() {
         clearTimeout(processingTimeoutRef.current);
       }
       processingTimeoutRef.current = setTimeout(() => {
-        convertImageToAscii(selectedImage, outputWidth[0], charSet, preserveAspectRatio, newValue[0], brightness[0], contrast[0], inverted);
+        convertImageToAscii(selectedImage, outputWidth[0], charSet, preserveAspectRatio, newValue[0], brightness[0], contrast[0], inverted, colorMode);
       }, 300);
     }
   };
@@ -495,7 +537,7 @@ export function ImageToAscii() {
       setSelectedImage(imageUrl);
 
       console.log('Starting conversion...');
-      convertImageToAscii(imageUrl, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], contrast[0], inverted);
+      convertImageToAscii(imageUrl, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], contrast[0], inverted, colorMode);
 
     } catch (error) {
       console.error('Image processing error:', error);
@@ -539,15 +581,17 @@ export function ImageToAscii() {
         clearTimeout(processingTimeoutRef.current);
       }
       processingTimeoutRef.current = setTimeout(() => {
-        convertImageToAscii(selectedImage, newWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], contrast[0], inverted);
+        convertImageToAscii(selectedImage, newWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], contrast[0], inverted, colorMode);
       }, 300);
     }
   };
 
+
+
   const handleCharSetChange = (newCharSet: string) => {
     setCharSet(newCharSet);
     if (selectedImage && !isProcessing) {
-      convertImageToAscii(selectedImage, outputWidth[0], newCharSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], contrast[0], inverted);
+      convertImageToAscii(selectedImage, outputWidth[0], newCharSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], contrast[0], inverted, colorMode);
     }
   };
 
@@ -636,7 +680,7 @@ export function ImageToAscii() {
       console.log('Sample image created successfully, data URL length:', sampleImageUrl.length);
 
       setSelectedImage(sampleImageUrl);
-      convertImageToAscii(sampleImageUrl, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], contrast[0], inverted);
+      convertImageToAscii(sampleImageUrl, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], contrast[0], inverted, colorMode);
       safeToast.success('Sample image loaded successfully');
 
     } catch (error) {
@@ -665,7 +709,7 @@ export function ImageToAscii() {
       const objectUrl = URL.createObjectURL(blob);
 
       setSelectedImage(objectUrl);
-      convertImageToAscii(objectUrl, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], contrast[0], inverted);
+      convertImageToAscii(objectUrl, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], contrast[0], inverted, colorMode);
 
     } catch (error) {
       console.error('Random image error:', error);
@@ -679,7 +723,7 @@ export function ImageToAscii() {
     if (selectedImage && !isProcessing) {
       if (processingTimeoutRef.current) clearTimeout(processingTimeoutRef.current);
       processingTimeoutRef.current = setTimeout(() => {
-        convertImageToAscii(selectedImage, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], value[0], contrast[0], inverted);
+        convertImageToAscii(selectedImage, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], value[0], contrast[0], inverted, colorMode);
       }, 300);
     }
   };
@@ -689,7 +733,7 @@ export function ImageToAscii() {
     if (selectedImage && !isProcessing) {
       if (processingTimeoutRef.current) clearTimeout(processingTimeoutRef.current);
       processingTimeoutRef.current = setTimeout(() => {
-        convertImageToAscii(selectedImage, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], value[0], inverted);
+        convertImageToAscii(selectedImage, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], value[0], inverted, colorMode);
       }, 300);
     }
   };
@@ -697,7 +741,24 @@ export function ImageToAscii() {
   const handleInvertToggle = (checked: boolean) => {
     setInverted(checked);
     if (selectedImage && !isProcessing) {
-      convertImageToAscii(selectedImage, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], contrast[0], checked);
+
+      convertImageToAscii(selectedImage, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], contrast[0], checked, colorMode);
+    }
+  };
+
+  const handleColorModeToggle = (checked: boolean) => {
+    setColorMode(checked);
+    if (selectedImage && !isProcessing) {
+
+      convertImageToAscii(selectedImage, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], contrast[0], inverted, checked);
+    }
+  };
+
+  const handleFormatRatioChange = (newRatio: string) => {
+    setFormatRatio(newRatio);
+    if (selectedImage && !isProcessing) {
+
+      convertImageToAscii(selectedImage, outputWidth[0], charSet, preserveAspectRatio, aspectRatioMultiplier[0], brightness[0], contrast[0], inverted, colorMode);
     }
   };
 
@@ -792,15 +853,28 @@ export function ImageToAscii() {
       ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
       // Set text properties
-      ctx.fillStyle = '#000000';
       ctx.font = `${fontSize}px ${fontFamily}`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
 
-      // Render each line
-      lines.forEach((line, index) => {
-        ctx.fillText(line, padding, padding + index * lineHeight);
-      });
+      // Render each line - with color support
+      if (colorMode && coloredAsciiOutput.length > 0) {
+        // Render with colors
+        coloredAsciiOutput.forEach((line, lineIndex) => {
+          let xPos = padding;
+          line.forEach((cell) => {
+            ctx.fillStyle = cell.color;
+            ctx.fillText(cell.char, xPos, padding + lineIndex * lineHeight);
+            xPos += charWidth;
+          });
+        });
+      } else {
+        // Render in black (original behavior)
+        ctx.fillStyle = '#000000';
+        lines.forEach((line, index) => {
+          ctx.fillText(line, padding, padding + index * lineHeight);
+        });
+      }
 
       // Convert to blob and download
       tempCanvas.toBlob((blob) => {
@@ -836,8 +910,6 @@ export function ImageToAscii() {
       const lines = asciiOutput.split('\n');
       const fontSize = 12;
       const lineHeight = 14.4; // 1.2em
-      // Estimate char width for Courier New (monospace is approx 0.6em usually, but let's be generous or use a fixed width font measure if possible. 
-      // For SVG mono, 0.6 * fontSize is a safe-ish estimate for canvas width calcs)
       const charWidth = fontSize * 0.6;
 
       // Calculate dimensions (add padding)
@@ -848,11 +920,34 @@ export function ImageToAscii() {
       // Escape special characters for XML
       const escapeXML = (str: string) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 
-      const content = lines
-        .map((line, i) => `<tspan x="20" dy="${i === 0 ? '1em' : '1.2em'}">${escapeXML(line)}</tspan>`)
-        .join('');
+      let content: string;
 
-      const svg = `<?xml version="1.0" encoding="UTF-8"?>
+      if (colorMode && coloredAsciiOutput.length > 0) {
+        // Render with colors - each character as a separate tspan
+        content = coloredAsciiOutput
+          .map((line, lineIndex) => {
+            const lineContent = line.map((cell, charIndex) =>
+              `<tspan x="${20 + charIndex * charWidth}" fill="${cell.color}">${escapeXML(cell.char)}</tspan>`
+            ).join('');
+            return `<tspan y="${20 + lineIndex * lineHeight + fontSize}">${lineContent}</tspan>`;
+          })
+          .join('\n');
+      } else {
+        // Original black text
+        content = lines
+          .map((line, i) => `<tspan x="20" dy="${i === 0 ? '1em' : '1.2em'}">${escapeXML(line)}</tspan>`)
+          .join('');
+      }
+
+      const svg = colorMode && coloredAsciiOutput.length > 0
+        ? `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="white"/>
+  <text font-family="'Courier New', Courier, monospace" font-size="${fontSize}px" xml:space="preserve">
+${content}
+  </text>
+</svg>`
+        : `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
   <rect width="100%" height="100%" fill="white"/>
   <text x="20" y="20" font-family="'Courier New', Courier, monospace" font-size="${fontSize}px" fill="black" xml:space="preserve">
@@ -880,10 +975,10 @@ ${content}
   // Show loading while checking browser compatibility
   if (browserSupported === null) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-160px)] sm:h-[calc(100vh-180px)] lg:h-[calc(100vh-200px)]">
+      <div className="flex items-center justify-center h-screen bg-background">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-          <p className="text-sm text-muted-foreground">Checking browser compatibility...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-sm text-muted-foreground animate-pulse">Initializing engine...</p>
         </div>
       </div>
     );
@@ -892,10 +987,13 @@ ${content}
   // Show fallback message if browser is not supported
   if (!browserSupported) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-160px)] sm:h-[calc(100vh-180px)] lg:h-[calc(100vh-200px)]">
-        <Card className="w-full max-w-md">
+      <div className="flex items-center justify-center h-screen bg-background p-4">
+        <Card className="w-full max-w-md border-destructive/50 bg-destructive/5">
           <CardHeader>
-            <CardTitle>Browser Not Supported</CardTitle>
+            <CardTitle className="text-destructive flex items-center gap-2">
+              <X className="w-5 h-5" />
+              Browser Not Supported
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
@@ -909,33 +1007,59 @@ ${content}
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 h-[calc(100vh-160px)] sm:h-[calc(100vh-180px)] lg:h-[calc(100vh-200px)] max-w-full">
-      {/* Controls Sidebar */}
-      <div className="w-full lg:w-80 flex-shrink-0 max-h-full">
-        <Card className="h-full">
-          <CardHeader>
-            <CardTitle>Image to ASCII</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6 h-[calc(100%-80px)] overflow-y-auto">
-            {/* Image Upload Section */}
-            <div className="space-y-2">
-              <Label>Upload Image</Label>
+    <div className="flex flex-col lg:flex-row h-screen bg-background overflow-hidden text-foreground selection:bg-primary/20 transition-colors duration-300">
+
+      {/* LEFT SIDEBAR - CONTROLS */}
+      <div className="w-full lg:w-80 flex-col border-r border-border bg-card/30 backdrop-blur-xl z-20 flex shadow-sm">
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-border bg-card/50 flex items-center justify-between">
+          <div className="flex items-center gap-3 font-bold text-xl tracking-tight">
+            <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-primary" />
+            </div>
+            <span className="bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text text-transparent">ASCII Gen</span>
+          </div>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-full w-9 h-9"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          >
+            {theme === 'dark' ? (
+              <Sun className="w-4 h-4 text-amber-400 fill-amber-400/20" />
+            ) : (
+              <Moon className="w-4 h-4 text-indigo-400 fill-indigo-400/20" />
+            )}
+          </Button>
+        </div>
+
+        <ScrollArea className="flex-1">
+          <div className="p-6 space-y-8">
+
+            {/* 1. Input Section */}
+            <div className="space-y-4">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Input Source</Label>
               {!selectedImage ? (
                 <div className="space-y-3">
                   <div
-                    className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-muted-foreground/50 transition-colors"
+                    className="group border-2 border-dashed border-input hover:border-primary/50 transition-all duration-300 rounded-xl p-8 text-center cursor-pointer bg-muted/5 hover:bg-muted/10"
                     onClick={() => fileInputRef.current?.click()}
                     onDragOver={(e) => {
                       e.preventDefault();
                       e.currentTarget.classList.add('border-primary');
+                      e.currentTarget.classList.add('bg-primary/5');
                     }}
                     onDragLeave={(e) => {
                       e.preventDefault();
                       e.currentTarget.classList.remove('border-primary');
+                      e.currentTarget.classList.remove('bg-primary/5');
                     }}
                     onDrop={(e) => {
                       e.preventDefault();
                       e.currentTarget.classList.remove('border-primary');
+                      e.currentTarget.classList.remove('bg-primary/5');
                       const files = e.dataTransfer.files;
                       if (files.length > 0) {
                         const file = files[0];
@@ -950,55 +1074,52 @@ ${content}
                       }
                     }}
                   >
-                    <Upload className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">Click to upload or drag & drop</p>
-                    <p className="text-xs text-muted-foreground mt-1">JPG, PNG, GIF, WebP</p>
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                      <Upload className="w-6 h-6 text-primary" />
+                    </div>
+                    <p className="text-sm font-medium">Click to upload image</p>
+                    <p className="text-xs text-muted-foreground mt-1">or drag and drop</p>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <Button variant="outline" onClick={handleTrySample} className="w-full">
-                      <Sparkles className="w-4 h-4 mr-2" />
+                    <Button variant="outline" onClick={handleTrySample} className="h-9">
+                      <Sparkles className="w-3.5 h-3.5 mr-2 text-orange-500" />
                       Sample
                     </Button>
-                    <Button variant="outline" onClick={handleRandomImage} className="w-full">
-                      <Shuffle className="w-4 h-4 mr-2" />
+                    <Button variant="outline" onClick={handleRandomImage} className="h-9">
+                      <Shuffle className="w-3.5 h-3.5 mr-2 text-blue-500" />
                       Random
                     </Button>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  <div className="relative">
+                <div className="space-y-3 animate-in fade-in slide-in-from-top-4 duration-300">
+                  <div className="relative group rounded-xl overflow-hidden border bg-muted/20 shadow-sm aspect-video flex items-center justify-center">
                     <img
                       src={selectedImage}
                       alt="Selected"
-                      className="w-full h-auto max-h-48 object-contain rounded-lg border bg-muted/20"
+                      className="w-full h-full object-contain"
                     />
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="absolute top-2 right-2"
-                      onClick={handleRemoveImage}
-                    >
-                      <X className="w-3 h-3" />
-                    </Button>
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-sm">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="h-8"
+                      >
+                        Change
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={handleRemoveImage}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Upload className="w-4 h-4 mr-2" />
-                      New
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleRandomImage}
-                    >
-                      <Shuffle className="w-4 h-4 mr-2" />
-                      Random
-                    </Button>
+                  <div className="text-xs text-center text-muted-foreground">
+                    {imageInfo && `${imageInfo.width} × ${imageInfo.height}px`}
                   </div>
                 </div>
               )}
@@ -1011,229 +1132,275 @@ ${content}
               />
             </div>
 
-            {/* Controls */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="charset-select">Character Set</Label>
-                <Select value={charSet} onValueChange={handleCharSetChange}>
-                  <SelectTrigger id="charset-select">
-                    <SelectValue placeholder="Select character set" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(ASCII_CHAR_SETS).map(([key, set]) => (
-                      <SelectItem key={key} value={key}>
-                        {set.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <Separator />
 
-              <div className="space-y-4 pt-2 border-t">
-                <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold">Adjustments</Label>
+            {/* 2. Controls Accordion */}
+            <Accordion type="multiple" defaultValue={["output", "style"]} className="w-full">
+
+              <AccordionItem value="output" className="border-none">
+                <AccordionTrigger className="py-2 hover:no-underline hover:bg-muted/50 px-2 rounded-lg text-sm font-semibold">
                   <div className="flex items-center gap-2">
-                    <Label htmlFor="invert-toggle" className="text-xs">Invert</Label>
-                    <Switch
-                      id="invert-toggle"
-                      checked={inverted}
-                      onCheckedChange={handleInvertToggle}
-                    />
+                    <Monitor className="w-4 h-4 text-primary" />
+                    Output Settings
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label htmlFor="brightness-slider">Brightness: {brightness[0].toFixed(1)}</Label>
-                  </div>
-                  <Slider
-                    id="brightness-slider"
-                    min={0}
-                    max={2}
-                    step={0.1}
-                    value={brightness}
-                    onValueChange={handleBrightnessChange}
-                    className="w-full"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label htmlFor="contrast-slider">Contrast: {contrast[0].toFixed(1)}</Label>
-                  </div>
-                  <Slider
-                    id="contrast-slider"
-                    min={0}
-                    max={2}
-                    step={0.1}
-                    value={contrast}
-                    onValueChange={handleContrastChange}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="width-slider">Output Width: {outputWidth[0]} chars</Label>
-                <Slider
-                  id="width-slider"
-                  min={20}
-                  max={200}
-                  step={5}
-                  value={outputWidth}
-                  onValueChange={handleWidthChange}
-                  className="w-full"
-                />
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="aspect-ratio-toggle" className="text-sm">Preserve Aspect Ratio</Label>
-                  <Switch
-                    id="aspect-ratio-toggle"
-                    checked={preserveAspectRatio}
-                    onCheckedChange={handleAspectRatioToggle}
-                  />
-                </div>
-
-                {preserveAspectRatio && (
+                </AccordionTrigger>
+                <AccordionContent className="px-2 pt-2 space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="ratio-slider">Character Ratio: {aspectRatioMultiplier[0].toFixed(2)}</Label>
+                    <div className="flex justify-between items-center bg-muted/30 p-2 rounded-md">
+                      <Label htmlFor="width-slider" className="text-xs font-mono">Width</Label>
+                      <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded font-mono font-bold">{outputWidth[0]}</span>
+                    </div>
                     <Slider
-                      id="ratio-slider"
-                      min={0.3}
-                      max={1.0}
-                      step={0.05}
-                      value={aspectRatioMultiplier}
-                      onValueChange={handleAspectRatioMultiplierChange}
+                      id="width-slider"
+                      min={20}
+                      max={200}
+                      step={4}
+                      value={outputWidth}
+                      onValueChange={handleWidthChange}
                       className="w-full"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Adjust to compensate for character height/width ratio
-                    </p>
                   </div>
-                )}
-              </div>
 
-              {imageInfo && (
-                <div className="text-xs text-muted-foreground space-y-1 p-2 bg-muted/20 rounded">
-                  <p>Original: {imageInfo.width}×{imageInfo.height}px</p>
-                  <p>Aspect Ratio: {imageInfo.aspectRatio.toFixed(3)}:1</p>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Format Ratio</Label>
+                    <Select value={formatRatio} onValueChange={handleFormatRatioChange}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(FORMAT_RATIOS).map(([key, ratio]) => (
+                          <SelectItem key={key} value={key} className="text-xs">
+                            {ratio.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="aspect-ratio-toggle" className="text-xs cursor-pointer">Preserve Aspect Ratio</Label>
+                    <Switch
+                      id="aspect-ratio-toggle"
+                      checked={preserveAspectRatio}
+                      onCheckedChange={handleAspectRatioToggle}
+                      className="scale-75 origin-right"
+                    />
+                  </div>
+
                   {preserveAspectRatio && (
-                    <p>Character Ratio: {(imageInfo.aspectRatio * aspectRatioMultiplier[0]).toFixed(3)}:1</p>
+                    <div className="space-y-2 pt-1">
+                      <div className="flex justify-between items-center">
+                        <Label className="text-xs text-muted-foreground">Char Ratio Fix</Label>
+                        <span className="text-[10px] text-muted-foreground font-mono">{aspectRatioMultiplier[0].toFixed(2)}</span>
+                      </div>
+                      <Slider
+                        min={0.3}
+                        max={1.0}
+                        step={0.05}
+                        value={aspectRatioMultiplier}
+                        onValueChange={handleAspectRatioMultiplierChange}
+                      />
+                    </div>
                   )}
-                </div>
-              )}
-            </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            <div className="flex flex-col gap-2">
-              {isProcessing && (
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    setIsProcessing(false);
-                    if (processingTimeoutRef.current) {
-                      clearTimeout(processingTimeoutRef.current);
-                    }
-                    safeToast.info('Processing cancelled');
-                  }}
-                  className="w-full"
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Cancel Processing
-                </Button>
-              )}
-              <Button
-                onClick={handleCopy}
-                disabled={!asciiOutput || isProcessing}
-                className="w-full"
-              >
-                <Copy className="w-4 h-4 mr-2" />
-                Copy to Clipboard
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleDownload}
-                disabled={!asciiOutput || isProcessing}
-                className="w-full"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download as TXT
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleDownloadPNG}
-                disabled={!asciiOutput || isProcessing}
-                className="w-full"
-              >
-                <Image className="w-4 h-4 mr-2" />
-                Download as PNG
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleDownloadSVG}
-                disabled={!asciiOutput || isProcessing}
-                className="w-full"
-              >
-                <FileCode className="w-4 h-4 mr-2" />
-                Download as SVG
-              </Button>
-            </div>
+              <AccordionItem value="style" className="border-none">
+                <AccordionTrigger className="py-2 hover:no-underline hover:bg-muted/50 px-2 rounded-lg text-sm font-semibold">
+                  <div className="flex items-center gap-2">
+                    <Palette className="w-4 h-4 text-secondary" />
+                    Style & Filters
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-2 pt-2 space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2 p-2 bg-muted/30 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Invert</Label>
+                        <Switch checked={inverted} onCheckedChange={handleInvertToggle} className="scale-75" />
+                      </div>
+                    </div>
+                    <div className="space-y-2 p-2 bg-muted/30 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Color</Label>
+                        <Switch checked={colorMode} onCheckedChange={handleColorModeToggle} className="scale-75" />
+                      </div>
+                    </div>
+                  </div>
 
-            <div className="text-xs text-muted-foreground">
-              <p>
-                Upload any image to convert it to ASCII art. Adjust the width and character set for different effects.
-              </p>
-              {selectedImage && (
-                <p className="mt-2 text-xs text-muted-foreground/70">
-                  Tip: Large images are automatically resized for optimal performance.
-                </p>
-              )}
-              {isProcessing && (
-                <p className="mt-2 text-xs text-blue-600">
-                  Processing image... Please wait.
-                </p>
-              )}
-              {asciiOutput && !isProcessing && (
-                <p className="mt-2 text-xs text-green-600">
-                  ✓ ASCII art generated successfully! ({(() => {
-                    const lines = asciiOutput.split('\n');
-                    const widths = lines.map(line => line.length);
-                    const minWidth = Math.min(...widths);
-                    const maxWidth = Math.max(...widths);
-                    const isRectangular = minWidth === maxWidth;
-                    return `${lines.length} lines, ${maxWidth} chars wide${isRectangular ? ' (rectangular)' : ' (mixed widths)'}`;
-                  })()})
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span>Brightness</span>
+                        <span>{brightness[0].toFixed(1)}</span>
+                      </div>
+                      <Slider
+                        min={0} max={2} step={0.1}
+                        value={brightness} onValueChange={handleBrightnessChange}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span>Contrast</span>
+                        <span>{contrast[0].toFixed(1)}</span>
+                      </div>
+                      <Slider
+                        min={0} max={2} step={0.1}
+                        value={contrast} onValueChange={handleContrastChange}
+                      />
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+            </Accordion>
+
+          </div>
+        </ScrollArea>
+
+        {/* Footer Actions */}
+        <div className="p-6 border-t border-border bg-card/50 space-y-4">
+          <Button
+            onClick={handleCopy}
+            disabled={!asciiOutput || isProcessing}
+            className="w-full shadow-lg shadow-primary/20 hover:shadow-primary/40 font-semibold transition-all duration-300 active:scale-[0.98]"
+          >
+            <Copy className="w-4 h-4 mr-2" />
+            Copy ASCII
+          </Button>
+
+          <div className="space-y-3">
+            <Button
+              variant="outline"
+              onClick={handleDownload}
+              disabled={!asciiOutput || isProcessing}
+              className="w-full justify-start hover:bg-accent transition-all"
+            >
+              <Download className="w-4 h-4 mr-2 text-primary" />
+              Download TXT
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleDownloadPNG}
+              disabled={!asciiOutput || isProcessing}
+              className="w-full justify-start hover:bg-accent transition-all"
+            >
+              <ImageIcon className="w-4 h-4 mr-2 text-primary" />
+              Download PNG
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleDownloadSVG}
+              disabled={!asciiOutput || isProcessing}
+              className="w-full justify-start hover:bg-accent transition-all"
+            >
+              <FileCode className="w-4 h-4 mr-2 text-primary" />
+              Download SVG
+            </Button>
+          </div>
+        </div>
       </div>
 
-      {/* ASCII Output Area */}
-      <div className="flex-1 min-w-0">
-        <Card className="h-full">
-          <CardHeader>
-            <CardTitle>Generated ASCII Art</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[calc(100%-80px)]">
-            <div className="h-full bg-muted/30 rounded-lg p-3 overflow-auto relative">
-              {isProcessing && (
-                <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg z-10">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                    <p className="mt-2 text-sm text-muted-foreground">Processing image...</p>
-                  </div>
+      {/* RIGHT PREVIEW AREA */}
+      <div className="flex-1 flex flex-col h-full min-w-0 bg-background relative transition-colors duration-300">
+        {/* Main Canvas Area */}
+        <div className="flex-1 p-6 md:p-10 overflow-hidden relative flex items-center justify-center bg-muted/30">
+          {/* Subtle grid pattern */}
+          <div
+            className="absolute inset-0 opacity-[0.03] pointer-events-none"
+            style={{
+              backgroundImage: 'radial-gradient(currentColor 1px, transparent 1px)',
+              backgroundSize: '20px 20px'
+            }}
+          />
+
+          <div className={`relative max-w-full max-h-full transition-all duration-500 ${isProcessing ? 'opacity-50 blur-sm scale-95' : 'opacity-100 scale-100'}`}>
+            {/* ASCII Output Card with Forced White Background */}
+            <div className="relative shadow-2xl rounded-xl overflow-hidden border border-border bg-white ring-1 ring-black/5">
+              {/* Terminal-style Header - Forced light colors for visibility */}
+              <div className="h-8 bg-zinc-100 flex items-center px-4 gap-2 border-b border-zinc-200">
+                <div className="flex gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-zinc-300"></div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-zinc-300"></div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-zinc-300"></div>
                 </div>
-              )}
-              <div className="w-full h-full overflow-auto scrollbar-thin">
-                <pre className="font-mono text-xs leading-[1.0] whitespace-pre block min-w-fit min-h-full select-all">
-                  {asciiOutput || 'Upload an image in the sidebar to generate ASCII art...'}
-                </pre>
+                <span className="ml-3 text-[10px] text-zinc-400 font-mono uppercase tracking-widest font-bold">ascii-terminal</span>
+              </div>
+
+              {/* White Background Content Area */}
+              <div className="max-w-[calc(100vw-400px)] max-h-[calc(100vh-280px)] overflow-auto bg-white">
+                <div className="p-6 md:p-8 min-w-fit">
+                  <pre
+                    className="font-mono text-[10px] md:text-xs leading-[1.15] md:leading-[1.15] whitespace-pre block select-text text-zinc-900"
+                    style={{
+                      fontFamily: "'JetBrains Mono', 'Courier New', monospace",
+                      letterSpacing: '0px'
+                    }}
+                  >
+                    {colorMode && coloredAsciiOutput.length > 0 ? (
+                      coloredAsciiOutput.map((line, lineIndex) => (
+                        <div key={lineIndex}>
+                          {line.map((cell, cellIndex) => (
+                            <span key={cellIndex} style={{ color: cell.color }}>{cell.char}</span>
+                          ))}
+                        </div>
+                      ))
+                    ) : (
+                      <span className={!asciiOutput ? "text-zinc-400 italic" : "text-zinc-900"}>
+                        {asciiOutput || 'Waiting for image...'}
+                      </span>
+                    )}
+                  </pre>
+                </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+
+          {/* Processing Indicator Overlay */}
+          {
+            isProcessing && (
+              <div className="absolute inset-0 flex items-center justify-center z-50">
+                <div className="bg-zinc-900/90 backdrop-blur-md px-8 py-5 rounded-2xl shadow-2xl border border-zinc-700 flex items-center gap-4 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent"></div>
+                  <span className="font-medium text-white">Generating ASCII...</span>
+                </div>
+              </div>
+            )
+          }
+        </div>
+
+        {/* Character Set Selection - Material Design Chips */}
+        <div className="px-6 py-5 border-t border-border bg-card/80 backdrop-blur transition-colors" >
+          <div className="flex items-center gap-4">
+            <Label className="text-xs font-bold text-muted-foreground whitespace-nowrap uppercase tracking-widest">Styles</Label>
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none scroll-smooth">
+              {Object.entries(ASCII_CHAR_SETS).map(([key, set]) => (
+                <button
+                  key={key}
+                  onClick={() => handleCharSetChange(key)}
+                  className={`px-5 py-2 rounded-full text-xs font-semibold transition-all duration-300 whitespace-nowrap active:scale-95 ${charSet === key
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
+                    : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground border border-border"
+                    }`}
+                >
+                  {set.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Status Bar */}
+        <div className="h-10 border-t border-border bg-card flex items-center px-6 justify-center text-[10px] text-muted-foreground font-mono uppercase tracking-widest transition-colors" >
+          {asciiOutput && (() => {
+            const lines = asciiOutput.split('\n');
+            const widths = lines.map(line => line.length);
+            const maxWidth = Math.max(...widths);
+            return `${maxWidth} × ${lines.length} characters`;
+          })()}
+        </div>
+
       </div>
 
       {/* Hidden canvas for image processing */}
