@@ -139,6 +139,7 @@ ${content}
 
 /** Shared helper to trigger a file download from a blob */
 function downloadBlob(blob: Blob, filename: string) {
+    console.log(`Starting download for ${filename} (Size: ${blob.size} bytes)`);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -150,5 +151,6 @@ function downloadBlob(blob: Blob, filename: string) {
     setTimeout(() => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-    }, 100);
+        console.log(`Cleanup download for ${filename}`);
+    }, 2000);
 }

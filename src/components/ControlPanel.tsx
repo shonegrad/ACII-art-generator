@@ -86,8 +86,8 @@ export function ControlPanel({
                                 onClick={() => fileInputRef.current?.click()}
                                 onDragOver={(e) => {
                                     e.preventDefault();
-                                    e.currentTarget.style.borderColor = 'hsl(267 100% 67%)';
-                                    e.currentTarget.style.background = 'hsl(267 100% 67% / 0.04)';
+                                    e.currentTarget.style.borderColor = 'hsl(300 100% 50%)';
+                                    e.currentTarget.style.background = 'hsl(300 100% 50% / 0.04)';
                                 }}
                                 onDragLeave={(e) => {
                                     e.preventDefault();
@@ -107,7 +107,7 @@ export function ControlPanel({
                                 }}
                             >
                                 <div className="upload-zone__icon">
-                                    <Upload size={18} style={{ color: 'hsl(267 100% 67%)' }} />
+                                    <Upload size={18} style={{ color: 'hsl(300 100% 50%)' }} />
                                 </div>
                                 <div className="upload-zone__title">Upload image</div>
                                 <div className="upload-zone__subtitle">or drag and drop</div>
