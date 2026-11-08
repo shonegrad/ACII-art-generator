@@ -20,9 +20,9 @@ export interface RecordOptions {
     fps: number;
     /** GIF loop count (0 = infinite, -1 = no loop) or "boomerang" for forward-and-back */
     loop: number | 'boomerang';
-    /** Output canvas width in pixels */
+    /** Output canvas width in character grid columns */
     width: number;
-    /** Output canvas height in pixels */
+    /** Output canvas height in character grid rows */
     height: number;
     /** Progress callback (0→1) */
     onProgress?: (p: number) => void;
@@ -142,13 +142,34 @@ export async function recordKnobGif({
 
     return new Promise((resolve, reject) => {
         let gif: InstanceType<typeof GIF>;
+        // Measure true monospace metrics so the ASCII grid tiles the canvas
+        // edge-to-edge (no gaps, no clipped edges).
+        const measureCanvas = document.createElement('canvas');
+        const measureCtx = measureCanvas.getContext('2d');
+        if (!measureCtx) {
+            reject(new Error('Cannot measure text metrics'));
+            return;
+        }
+        measureCtx.font = `${DEFAULT_FONT_SIZE}px 'Courier New', Courier, monospace`;
+        const charWidth = measureCtx.measureText('M').width || DEFAULT_FONT_SIZE * 0.6;
+        const lineHeight = DEFAULT_FONT_SIZE * 1.15;
+
+        // width/height from opts are grid dimensions (columns × rows).
+        // Canvas pixel size = grid × cell size so text fills exactly.
+        const finalWidth = width;
+        const finalHeight = height;
+        const canvasWidth = finalWidth * charWidth;
+        const canvasHeight = finalHeight * lineHeight;
+        const cellWidth = canvasWidth / finalWidth; // === charWidth
+        const cellHeight = canvasHeight / finalHeight; // === lineHeight
+
         try {
             gif = new GIF({
                 workers: 2,
                 workerScript,
                 quality: 10,
-                width,
-                height,
+                width: canvasWidth,
+                height: canvasHeight,
                 repeat: typeof loop === 'number' ? loop : 0,
                 background: '#ffffff',
             });
@@ -167,26 +188,6 @@ export async function recordKnobGif({
         });
 
         let frameIndex = 0;
-
-        // Measure true monospace metrics so the ASCII grid tiles the canvas
-        // edge-to-edge (no gaps, no clipped edges).
-        const measureCanvas = document.createElement('canvas');
-        const measureCtx = measureCanvas.getContext('2d');
-        if (!measureCtx) {
-            reject(new Error('Cannot measure text metrics'));
-            return;
-        }
-        measureCtx.font = `${DEFAULT_FONT_SIZE}px 'Courier New', Courier, monospace`;
-        const charWidth = measureCtx.measureText('M').width || DEFAULT_FONT_SIZE * 0.6;
-
-        // Size the ASCII grid to fill the output canvas exactly.
-        // Use measured char metrics to pick grid dimensions, then compute
-        // exact cellWidth/cellHeight so finalWidth * cellWidth === width
-        // and finalHeight * cellHeight === height — zero gaps.
-        const finalWidth = Math.max(1, Math.floor(width / charWidth));
-        const finalHeight = Math.max(1, Math.floor(height / charWidth * 1.15));
-        const cellWidth = width / finalWidth;
-        const cellHeight = height / finalHeight;
 
         const renderNextFrame = () => {
             if (frameIndex >= totalFrames) {

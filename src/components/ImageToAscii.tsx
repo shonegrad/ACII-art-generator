@@ -41,20 +41,19 @@ export function ImageToAscii() {
     [handleOptionChange]
   );
 
-  /** Compute GIF canvas dimensions preserving source image aspect ratio.
-   *  Max width 480px; height derived from aspect ratio (capped at 720px max). */
+  /** Compute GIF grid dimensions matching the live preview.
+   *  Uses fixed grid width (80 columns) so preview and export match exactly.
+   *  Height derived from source image aspect ratio × char aspect ratio (~0.52).
+   */
   const gifDimensions = useMemo(() => {
-    if (!imageInfo) return { width: 480, height: 360 };
-    const maxWidth = 480;
-    const maxHeight = 720;
-    let width = maxWidth;
-    // imageInfo.aspectRatio is height/width
-    let height = Math.floor(width * imageInfo.aspectRatio);
-    if (height > maxHeight) {
-        height = maxHeight;
-        width = Math.floor(height / imageInfo.aspectRatio);
-    }
-    return { width, height };
+    if (!imageInfo) return { width: 80, height: 40 };
+    const imageAspectRatio = imageInfo.height / imageInfo.width; // height/width
+    const gridWidth = 80;
+    const gridHeight = Math.max(
+      10,
+      Math.floor(gridWidth * imageAspectRatio * 0.52) // charAspectRatio ≈ 0.52
+    );
+    return { width: gridWidth, height: gridHeight };
   }, [imageInfo]);
 
   return (
