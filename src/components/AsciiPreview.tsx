@@ -120,9 +120,11 @@ export function AsciiPreview({
                                                 ))}
                                             </div>
                                         ))
+                                    ) : asciiOutput ? (
+                                        <span>{asciiOutput}</span>
                                     ) : (
                                         <span className="empty-placeholder">
-                                            {asciiOutput || 'Drop an image to begin…'}
+                                            Drop an image to begin…
                                         </span>
                                     )}
                                 </pre>
