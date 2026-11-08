@@ -41,7 +41,6 @@ const KNOB_RANGES: Record<'brightness' | 'contrast' | 'gamma', { min: number; ma
 };
 
 const DEFAULT_FONT_SIZE = 10;
-const DEFAULT_LINE_HEIGHT = 1.2;
 
 /** Knob display names for filenames. */
 const KNOB_LABELS: Record<'brightness' | 'contrast' | 'gamma', string> = {
@@ -50,23 +49,25 @@ const KNOB_LABELS: Record<'brightness' | 'contrast' | 'gamma', string> = {
     gamma: 'gamma',
 };
 
-/** Render ASCII lines to an offscreen canvas, matching the preview style. */
+/** Render ASCII lines to an offscreen canvas, tiling characters edge-to-edge
+ *  so the whole canvas is filled (no gaps or clipped edges). Character cells
+ *  are placed at the measured charWidth/lineHeight grid so each cell aligns
+ *  exactly and the text fills the canvas width/height. */
 function renderAsciiToCanvas(
     lines: string[],
     colorLines: ColorCell[][],
     colorMode: boolean,
     width: number,
     height: number,
-    fontSize: number
+    fontSize: number,
+    charWidth: number,
+    lineHeight: number
 ): HTMLCanvasElement {
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
     if (!ctx) return canvas;
-
-    const lineHeight = fontSize * DEFAULT_LINE_HEIGHT;
-    const charWidth = fontSize * 0.6; // approximate monospace advance
 
     // White background
     ctx.fillStyle = '#ffffff';
@@ -78,17 +79,22 @@ function renderAsciiToCanvas(
 
     if (colorMode && colorLines.length > 0) {
         colorLines.forEach((line, lineIndex) => {
-            let xPos = 0;
-            line.forEach((cell) => {
+            line.forEach((cell, charIndex) => {
                 ctx.fillStyle = cell.color;
-                ctx.fillText(cell.char, xPos, lineIndex * lineHeight);
-                xPos += charWidth;
+                ctx.fillText(cell.char, charIndex * charWidth, lineIndex * lineHeight);
             });
         });
     } else {
         ctx.fillStyle = '#000000';
         lines.forEach((line, index) => {
-            ctx.fillText(line, 0, index * lineHeight);
+            // Draw each character individually so every cell aligns to the
+            // measured grid and the text fills the canvas width exactly.
+            for (let i = 0; i < line.length; i++) {
+                const ch = line[i];
+                if (ch !== ' ') {
+                    ctx.fillText(ch, i * charWidth, index * lineHeight);
+                }
+            }
         });
     }
 
@@ -146,6 +152,22 @@ export async function recordKnobGif({
 
         let frameIndex = 0;
 
+        // Measure true monospace metrics so the ASCII grid tiles the canvas
+        // edge-to-edge (no gaps, no clipped edges).
+        const measureCanvas = document.createElement('canvas');
+        const measureCtx = measureCanvas.getContext('2d');
+        if (!measureCtx) {
+            reject(new Error('Cannot measure text metrics'));
+            return;
+        }
+        measureCtx.font = `${DEFAULT_FONT_SIZE}px 'Courier New', Courier, monospace`;
+        const charWidth = measureCtx.measureText('M').width || DEFAULT_FONT_SIZE * 0.6;
+        const lineHeight = DEFAULT_FONT_SIZE * 1.15;
+
+        // Size the ASCII grid to fill the output canvas exactly.
+        const finalWidth = Math.max(1, Math.floor(width / charWidth));
+        const finalHeight = Math.max(1, Math.floor(height / lineHeight));
+
         const renderNextFrame = () => {
             if (frameIndex >= totalFrames) {
                 gif.render();
@@ -156,12 +178,6 @@ export async function recordKnobGif({
             const value = min + (max - min) * t;
 
             const frameOpts: ConversionOptions = { ...baseOptions, [knob]: value };
-
-            // Render ASCII grid. Size the grid to fit the output canvas.
-            const cellW = Math.max(4, Math.floor(width / 100));
-            const cellH = Math.max(6, Math.floor(height / 60));
-            const finalWidth = Math.max(1, Math.floor(width / cellW));
-            const finalHeight = Math.max(1, Math.floor(height / cellH));
 
             const { lines, colorLines } = renderAscii(
                 imageData,
@@ -178,7 +194,9 @@ export async function recordKnobGif({
                 frameOpts.colorMode,
                 width,
                 height,
-                DEFAULT_FONT_SIZE
+                DEFAULT_FONT_SIZE,
+                charWidth,
+                lineHeight
             );
 
             gif.addFrame(frameCanvas, { delay: Math.round(100 / fps), copy: true });
