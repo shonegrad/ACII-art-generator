@@ -9,7 +9,7 @@ export const ASCII_CHAR_SETS = {
     },
     detailed: {
         name: 'Detailed',
-        chars: '$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\\"^`\'. ',
+        chars: '@#W$9876543210?!abc;:+=-,._   ',
     },
     simple: {
         name: 'Simple',
@@ -37,11 +37,11 @@ export const ASCII_CHAR_SETS = {
     },
     lines: {
         name: 'Lines',
-        chars: '║│┃┊┋┌┐└┘├┤┬┴┼ ',
+        chars: '┼┬┴├┤┌┐└┘┃│┊┋ ',
     },
     slopes: {
         name: 'Slopes',
-        chars: '╱╲╳▲▼◄►◢◣◤◥ ',
+        chars: '╳▲▼◄►╱╲◢◣◤◥ ',
     },
     retro: {
         name: 'Retro',

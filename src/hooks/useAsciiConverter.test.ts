@@ -1,29 +1,41 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
+import { useExport } from './useExport';
 
 // Mock URL APIs that don't exist in jsdom
 const createObjectURLMock = vi.fn(() => 'blob:mock-url');
 const revokeObjectURLMock = vi.fn();
 
-describe('useExport - downloadBlob helper behavior', () => {
+vi.mock('sonner', () => ({
+    toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
+}));
+
+describe('useExport - downloadTxt', () => {
     beforeEach(() => {
         vi.restoreAllMocks();
+        vi.useFakeTimers();
 
         // Assign URL mock methods directly (jsdom doesn't have them)
         globalThis.URL.createObjectURL = createObjectURLMock;
         globalThis.URL.revokeObjectURL = revokeObjectURLMock;
+        createObjectURLMock.mockClear();
+        revokeObjectURLMock.mockClear();
     });
 
-    it('creates blob and triggers download for TXT', () => {
-        const blob = new Blob(['Hello ASCII'], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        expect(url).toBe('blob:mock-url');
-        expect(createObjectURLMock).toHaveBeenCalledWith(blob);
+    afterEach(() => {
+        vi.useRealTimers();
     });
 
-    it('revokes object URL after download', () => {
-        const url = URL.createObjectURL(new Blob(['test']));
-        URL.revokeObjectURL(url);
-        expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:mock-url');
+    it('creates an object URL and triggers a download for TXT', () => {
+        const { result } = renderHook(() =>
+            useExport({ asciiOutput: 'Hello ASCII', coloredOutput: [], colorMode: false }),
+        );
+
+        act(() => {
+            result.current.downloadTxt();
+        });
+
+        expect(createObjectURLMock).toHaveBeenCalledWith(expect.any(Blob));
     });
 });
 

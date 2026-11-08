@@ -14,7 +14,7 @@ interface ControlPanelProps {
     options: ConversionOptions;
 
     isProcessing: boolean;
-    fileInputRef: React.RefObject<HTMLInputElement | null> | React.RefObject<HTMLInputElement>;
+    fileInputRef: React.RefObject<HTMLInputElement>;
     onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onTrySample: () => void;
     onRandomImage: () => void;
@@ -52,6 +52,7 @@ export function ControlPanel({
                 <span className="control-panel__logo">ASCII Gen</span>
                 <button
                     onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                    aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
                     title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
                     style={{
                         background: 'none',
@@ -142,7 +143,7 @@ export function ControlPanel({
                             </div>
                         </div>
                     )}
-                    <input ref={fileInputRef as React.RefObject<HTMLInputElement>} type="file" accept="image/*" onChange={onFileUpload} style={{ display: 'none' }} />
+                    <input ref={fileInputRef} type="file" accept="image/*" onChange={onFileUpload} style={{ display: 'none' }} />
                 </div>
 
                 {/* ── Output Settings ── */}
@@ -225,6 +226,7 @@ export function ControlPanel({
                         <div className="control-row" style={{ padding: 'var(--space-2)', borderRadius: 'var(--radius-sm)', background: 'var(--surface-2)' }}>
                             <span className="control-label">Invert</span>
                             <Switch
+                                aria-label="Invert"
                                 checked={options.inverted}
                                 onCheckedChange={(v: boolean) => onOptionChange('inverted', v)}
                                 className="scale-75"
@@ -233,6 +235,7 @@ export function ControlPanel({
                         <div className="control-row" style={{ padding: 'var(--space-2)', borderRadius: 'var(--radius-sm)', background: 'var(--surface-2)' }}>
                             <span className="control-label">Color</span>
                             <Switch
+                                aria-label="Color"
                                 checked={options.colorMode}
                                 onCheckedChange={(v: boolean) => onOptionChange('colorMode', v)}
                                 className="scale-75"
@@ -271,16 +274,33 @@ export function ControlPanel({
                             style={{ marginTop: '8px' }}
                         />
                     </div>
+
+                    {/* Gamma (mid-tone curve) */}
+                    <div style={{ marginBottom: 'var(--space-3)' }}>
+                        <div className="control-row">
+                            <span className="control-label">Gamma</span>
+                            <span className="control-value">{options.gamma.toFixed(1)}</span>
+                        </div>
+                        <Slider
+                            min={0.1}
+                            max={3}
+                            step={0.1}
+                            value={[options.gamma]}
+                            onValueChange={([v]: number[]) => onOptionChange('gamma', v, true)}
+                            style={{ marginTop: '8px' }}
+                        />
+                    </div>
                     <div style={{ marginTop: 'var(--space-4)' }}>
                         <Button
                             variant="outline"
                             onClick={() => {
                                 onOptionChange('brightness', DEFAULT_OPTIONS.brightness);
                                 onOptionChange('contrast', DEFAULT_OPTIONS.contrast);
+                                onOptionChange('gamma', DEFAULT_OPTIONS.gamma);
                             }}
                             className="w-full"
                         >
-                            Reset Brightness/Contrast
+                            Reset Brightness/Contrast/Gamma
                         </Button>
                     </div>
                 </div>

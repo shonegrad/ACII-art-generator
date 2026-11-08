@@ -17,6 +17,7 @@ export interface ConversionOptions {
     aspectRatioMultiplier: number;
     brightness: number;
     contrast: number;
+    gamma: number;
     inverted: boolean;
     colorMode: boolean;
     formatRatio: FormatRatioKey;
@@ -36,6 +37,7 @@ export const DEFAULT_OPTIONS: ConversionOptions = {
     aspectRatioMultiplier: 0.5,
     brightness: 0.8,
     contrast: 1.2,
+    gamma: 1.0,
     inverted: false,
     colorMode: true,
     formatRatio: 'free',
@@ -50,10 +52,13 @@ export function useAsciiConverter() {
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const processingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const cancelledRef = useRef(false);
 
-    // Cleanup timeout on unmount
+    // Cleanup timeout and mark cancelled on unmount so in-flight
+    // image loads don't set state on an unmounted component.
     useEffect(() => {
         return () => {
+            cancelledRef.current = true;
             if (processingTimeoutRef.current) {
                 clearTimeout(processingTimeoutRef.current);
             }
@@ -68,10 +73,12 @@ export function useAsciiConverter() {
                 clearTimeout(processingTimeoutRef.current);
             }
 
+            cancelledRef.current = false;
             setIsProcessing(true);
 
             // Safety timeout to prevent infinite processing
             const safetyTimeout = setTimeout(() => {
+                if (cancelledRef.current) return;
                 setIsProcessing(false);
                 toast.error('Processing timeout — please try again');
             }, 10000);
@@ -80,6 +87,7 @@ export function useAsciiConverter() {
             img.crossOrigin = 'Anonymous';
 
             img.onload = () => {
+                if (cancelledRef.current) return;
                 try {
                     const originalAspectRatio = img.height / img.width;
                     setImageInfo({
@@ -146,6 +154,11 @@ export function useAsciiConverter() {
                             // Luminance → grayscale
                             let gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
 
+                            // Apply gamma correction (perceptual mid-tone weighting)
+                            // gamma < 1 brightens mid-tones, gamma > 1 darkens mid-tones
+                            const norm = gray / 255;
+                            gray = Math.round(255 * Math.pow(norm, 1 / opts.gamma));
+
                             // Apply contrast
                             gray = (gray - 128) * opts.contrast + 128;
 
@@ -207,6 +220,7 @@ export function useAsciiConverter() {
             };
 
             img.onerror = () => {
+                if (cancelledRef.current) return;
                 toast.error('Failed to load image');
                 clearTimeout(safetyTimeout);
                 setIsProcessing(false);

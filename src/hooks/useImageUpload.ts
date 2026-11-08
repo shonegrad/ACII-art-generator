@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 
 export function useImageUpload(onImageReady: (url: string) => void) {
@@ -12,6 +12,13 @@ export function useImageUpload(onImageReady: (url: string) => void) {
         objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
         objectUrlsRef.current = [];
     }, []);
+
+    /** Revoke any remaining object URLs on unmount to prevent memory leaks */
+    useEffect(() => {
+        return () => {
+            revokeObjectUrls();
+        };
+    }, [revokeObjectUrls]);
 
     /** Process any image file (from input or drag-and-drop) */
     const processFile = useCallback(

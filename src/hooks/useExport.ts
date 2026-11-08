@@ -35,7 +35,12 @@ export function useExport({ asciiOutput, coloredOutput, colorMode }: ExportOptio
         const charWidth = ctx.measureText('M').width;
         const padding = 20;
 
-        tempCanvas.width = maxLineLength * charWidth + padding * 2;
+        // Measure actual rendered text width so the canvas is wide enough
+        // to avoid clipping the final character of any line (monospace
+        // advance width can differ from glyph bounding box).
+        const measuredMaxWidth = Math.max(...lines.map((l) => ctx.measureText(l).width || 0), 0);
+        const estimatedWidth = colorMode && coloredOutput.length > 0 ? maxLineLength * charWidth : measuredMaxWidth;
+        tempCanvas.width = Math.ceil(Math.max(estimatedWidth, measuredMaxWidth)) + padding * 2;
         tempCanvas.height = lines.length * lineHeight + padding * 2;
 
         // White background
@@ -139,7 +144,6 @@ ${content}
 
 /** Shared helper to trigger a file download from a blob */
 function downloadBlob(blob: Blob, filename: string) {
-    console.log(`Starting download for ${filename} (Size: ${blob.size} bytes)`);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -151,6 +155,5 @@ function downloadBlob(blob: Blob, filename: string) {
     setTimeout(() => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        console.log(`Cleanup download for ${filename}`);
     }, 2000);
 }
