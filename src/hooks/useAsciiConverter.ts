@@ -29,13 +29,13 @@ export interface ImageInfo {
     aspectRatio: number;
 }
 
-const DEFAULT_OPTIONS: ConversionOptions = {
+export const DEFAULT_OPTIONS: ConversionOptions = {
     width: 120,
     charset: 'standard',
     preserveAspectRatio: true,
     aspectRatioMultiplier: 0.5,
-    brightness: 1,
-    contrast: 1,
+    brightness: 0.8,
+    contrast: 1.2,
     inverted: false,
     colorMode: true,
     formatRatio: 'free',
@@ -156,16 +156,15 @@ export function useAsciiConverter() {
                             gray = Math.max(0, Math.min(255, gray));
 
                             // Invert
-                            if (!opts.inverted) {
+                            if (opts.inverted) {
                                 gray = 255 - gray;
                             }
-
                             // Map to character
                             const charIndex = Math.min(
                                 Math.floor((gray / 255) * (chars.length - 1)),
                                 chars.length - 1
                             );
-                            const selectedChar = chars[chars.length - 1 - charIndex] || ' ';
+                            const selectedChar = chars[charIndex] || ' ';
                             line += selectedChar;
 
                             if (opts.colorMode) {

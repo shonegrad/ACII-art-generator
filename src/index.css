@@ -73,9 +73,9 @@
     --popover: 240 10% 5.9%;
     --popover-foreground: 0 0% 98%;
 
-    /* Primary - Vibrant Indigo/Violet */
-    --primary: 267 100% 67%;
-    /* #8B5CF6 - Vivid Violet */
+    /* Primary - Vibrant Magenta */
+    --primary: 300 100% 50%;
+    /* #FF00FF - Magenta */
     --primary-foreground: 0 0% 100%;
 
     /* Secondary - Teal/Cyan for accents */
@@ -88,7 +88,7 @@
     --muted-foreground: 240 5% 64.9%;
 
     /* Accents - for hover states etc */
-    --accent: 267 100% 67%;
+    --accent: 300 100% 50%;
     /* Use Primary as base accent */
     --accent-foreground: 0 0% 98%;
 
@@ -99,7 +99,7 @@
     /* Borders & Inputs */
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
-    --ring: 267 100% 67%;
+    --ring: 300 100% 50%;
     /* Primary color ring */
 
     /* Generic Colors for compatibility */

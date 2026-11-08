@@ -17,7 +17,7 @@ export const ASCII_CHAR_SETS = {
     },
     blocks: {
         name: 'Blocks',
-        chars: '██▓▒░  ',
+        chars: '█▓▒░▨▩  ',
     },
     dots: {
         name: 'Dots',
@@ -49,7 +49,7 @@ export const ASCII_CHAR_SETS = {
     },
     minimal: {
         name: 'Minimal',
-        chars: '██░░  ',
+        chars: '█░    ',
     },
     organic: {
         name: 'Organic',
@@ -61,7 +61,7 @@ export const ASCII_CHAR_SETS = {
     },
     artistic: {
         name: 'Artistic',
-        chars: '▓▒░▨▦▥▤▣▢▧▩⬛⬜ ',
+        chars: '▓▒░▨▦▥▤▣▢▧▩⬜ '
     },
 } as const;
 

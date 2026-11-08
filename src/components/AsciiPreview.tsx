@@ -14,6 +14,7 @@ interface AsciiPreviewProps {
     onDownloadTxt: () => void;
     onDownloadPng: () => void;
     onDownloadSvg: () => void;
+    onFileDrop: (file: File) => void;
 }
 
 export function AsciiPreview({
@@ -26,6 +27,7 @@ export function AsciiPreview({
     onDownloadTxt,
     onDownloadPng,
     onDownloadSvg,
+    onFileDrop,
 }: AsciiPreviewProps) {
     const handleCopy = async () => {
         if (!asciiOutput) {
@@ -41,6 +43,25 @@ export function AsciiPreview({
             }
         } else {
             toast.error(`Failed to copy: ${result.error || 'Unknown error'}`);
+        }
+    };
+
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
+    const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const file = e.dataTransfer.files[0];
+        if (file) {
+            onFileDrop(file);
         }
     };
 
@@ -62,7 +83,12 @@ export function AsciiPreview({
             </div>
 
             {/* Canvas Area */}
-            <div className="canvas-area">
+            <div
+                className="canvas-area"
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+            >
                 <div className="dot-pattern" />
 
                 <div

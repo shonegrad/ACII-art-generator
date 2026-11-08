@@ -67,6 +67,7 @@ export function ImageToAscii() {
         onDownloadTxt={downloadTxt}
         onDownloadPng={downloadPng}
         onDownloadSvg={downloadSvg}
+        onFileDrop={upload.processFile}
       />
 
       {/* Hidden canvas for image processing */}

@@ -6,7 +6,7 @@ import { Slider } from './ui/slider';
 import { Switch } from './ui/switch';
 import { toast } from 'sonner';
 import { FORMAT_RATIOS, type FormatRatioKey } from '@/lib/format-ratios';
-import type { ConversionOptions, ImageInfo } from '@/hooks/useAsciiConverter';
+import { DEFAULT_OPTIONS, type ConversionOptions, type ImageInfo } from '@/hooks/useAsciiConverter';
 
 interface ControlPanelProps {
     selectedImage: string | null;
@@ -247,7 +247,7 @@ export function ControlPanel({
                             <span className="control-value">{options.brightness.toFixed(1)}</span>
                         </div>
                         <Slider
-                            min={0}
+                            min={-2}
                             max={2}
                             step={0.1}
                             value={[options.brightness]}
@@ -264,12 +264,24 @@ export function ControlPanel({
                         </div>
                         <Slider
                             min={0}
-                            max={2}
+                            max={3}
                             step={0.1}
                             value={[options.contrast]}
                             onValueChange={([v]: number[]) => onOptionChange('contrast', v, true)}
                             style={{ marginTop: '8px' }}
                         />
+                    </div>
+                    <div style={{ marginTop: 'var(--space-4)' }}>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                onOptionChange('brightness', DEFAULT_OPTIONS.brightness);
+                                onOptionChange('contrast', DEFAULT_OPTIONS.contrast);
+                            }}
+                            className="w-full"
+                        >
+                            Reset Brightness/Contrast
+                        </Button>
                     </div>
                 </div>
             </div>
