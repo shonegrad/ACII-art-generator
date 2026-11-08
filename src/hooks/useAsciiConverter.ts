@@ -46,6 +46,7 @@ export const DEFAULT_OPTIONS: ConversionOptions = {
 };
 
 export function useAsciiConverter() {
+    const DEFAULT_FONT_SIZE = 10;
     const [asciiOutput, setAsciiOutput] = useState('');
     const [coloredOutput, setColoredOutput] = useState<ColorCell[][]>([]);
     const [imageInfo, setImageInfo] = useState<ImageInfo | null>(null);
@@ -68,6 +69,7 @@ export function useAsciiConverter() {
     const previewPixelsRef = useRef<ImageData | null>(null);
     const previewSrcWidthRef = useRef(0);
     const previewSrcHeightRef = useRef(0);
+    const previewCharAspectRef = useRef(0.5); // charWidth/lineHeight ≈ 0.52
 
     /** Acquire a 2D canvas surface sized for processing.
      *  Prefers OffscreenCanvas (no DOM sync, worker-compatible); falls back to
@@ -336,6 +338,16 @@ export function useAsciiConverter() {
             previewActiveRef.current = true;
             previewStartTimeRef.current = performance.now();
 
+            // Measure exact char cell aspect ratio so preview isn't stretched
+            const measureCanvas = document.createElement('canvas');
+            const measureCtx = measureCanvas.getContext('2d');
+            if (measureCtx) {
+                measureCtx.font = `${DEFAULT_FONT_SIZE}px 'Courier New', Courier, monospace`;
+                const mw = measureCtx.measureText('M').width || DEFAULT_FONT_SIZE * 0.6;
+                const charAspectRatio = mw / (DEFAULT_FONT_SIZE * 1.15); // width/height of a char cell (~0.52)
+                previewCharAspectRef.current = charAspectRatio;
+            }
+
             const loop = () => {
                 if (!previewActiveRef.current) return;
 
@@ -352,10 +364,18 @@ export function useAsciiConverter() {
                 const value = min + (max - min) * tBoomerang;
 
                 // Re-render with animated knob value using pure render (fast)
-                // Use fixed grid dimensions so preview size stays stable across
-                // frames regardless of source image dimensions.
-                const gridWidth = 80;
-                const gridHeight = 40;
+                // Compute grid dimensions preserving source image aspect ratio.
+                // Character cells are ~2x taller than wide (charAspectRatio ≈ 0.5),
+                // so we apply that multiplier to prevent vertical stretching.
+                const imageAspectRatio =
+                    previewSrcHeightRef.current / previewSrcWidthRef.current; // height/width
+                const gridWidth = Math.max(20, Math.min(120, Math.floor(width / 10)));
+                const gridHeight = Math.max(
+                    10,
+                    Math.floor(
+                        gridWidth * imageAspectRatio * previewCharAspectRef.current
+                    )
+                );
 
                 const { lines, colorLines } = renderAscii(
                     previewPixelsRef.current!.data,
