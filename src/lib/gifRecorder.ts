@@ -117,11 +117,18 @@ export async function recordKnobGif({
     srcWidth: number;
     srcHeight: number;
     baseOptions: ConversionOptions;
+    /** Which knob to animate */
     knob: 'brightness' | 'contrast' | 'gamma';
     opts: RecordOptions;
 }): Promise<RecordResult> {
     const { duration, fps, loop, width, height, onProgress } = opts;
-    const { min, max } = KNOB_RANGES[knob];
+
+    // Validate knob and resolve its animation range
+    const range = KNOB_RANGES[knob];
+    if (!range) {
+        throw new Error(`Invalid knob: ${knob}`);
+    }
+    const { min, max } = range;
     const totalFrames = Math.max(1, Math.round(duration * fps));
 
     return new Promise((resolve, reject) => {
@@ -177,7 +184,15 @@ export async function recordKnobGif({
             const t = frameIndex / Math.max(1, totalFrames - 1);
             const value = min + (max - min) * t;
 
-            const frameOpts: ConversionOptions = { ...baseOptions, [knob]: value };
+            // Explicitly set the animated knob while keeping others at base values
+            const frameOpts: ConversionOptions = { ...baseOptions };
+            if (knob === 'brightness') {
+                frameOpts.brightness = value;
+            } else if (knob === 'contrast') {
+                frameOpts.contrast = value;
+            } else if (knob === 'gamma') {
+                frameOpts.gamma = value;
+            }
 
             const { lines, colorLines } = renderAscii(
                 imageData,
