@@ -257,23 +257,25 @@ export function ControlPanel({
                             <span className="control-label">Brightness</span>
                             <span className="control-value">{options.brightness.toFixed(1)}</span>
                         </div>
-                        <Slider
-                            min={0}
-                            max={2}
-                            step={0.1}
-                            value={[options.brightness]}
-                            onValueChange={([v]: number[]) => onOptionChange('brightness', v, true)}
-                            style={{ marginTop: '8px' }}
-                        />
-                        <RecordButton
-                            knob="brightness"
-                            label="Brightness"
-                            baseOptions={options}
-                            imageUrl={imageUrl}
-                            capturePixels={capturePixels}
-                            width={480}
-                            height={360}
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: '8px' }}>
+                            <Slider
+                                min={0}
+                                max={2}
+                                step={0.1}
+                                value={[options.brightness]}
+                                onValueChange={([v]: number[]) => onOptionChange('brightness', v, true)}
+                                className="flex-1"
+                            />
+                            <RecordButton
+                                knob="brightness"
+                                label="Brightness"
+                                baseOptions={options}
+                                imageUrl={imageUrl}
+                                capturePixels={capturePixels}
+                                width={480}
+                                height={360}
+                            />
+                        </div>
                     </div>
 
                     {/* Contrast */}
@@ -282,23 +284,25 @@ export function ControlPanel({
                             <span className="control-label">Contrast</span>
                             <span className="control-value">{options.contrast.toFixed(1)}</span>
                         </div>
-                        <Slider
-                            min={0}
-                            max={3}
-                            step={0.1}
-                            value={[options.contrast]}
-                            onValueChange={([v]: number[]) => onOptionChange('contrast', v, true)}
-                            style={{ marginTop: '8px' }}
-                        />
-                        <RecordButton
-                            knob="contrast"
-                            label="Contrast"
-                            baseOptions={options}
-                            imageUrl={imageUrl}
-                            capturePixels={capturePixels}
-                            width={480}
-                            height={360}
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: '8px' }}>
+                            <Slider
+                                min={0}
+                                max={3}
+                                step={0.1}
+                                value={[options.contrast]}
+                                onValueChange={([v]: number[]) => onOptionChange('contrast', v, true)}
+                                className="flex-1"
+                            />
+                            <RecordButton
+                                knob="contrast"
+                                label="Contrast"
+                                baseOptions={options}
+                                imageUrl={imageUrl}
+                                capturePixels={capturePixels}
+                                width={480}
+                                height={360}
+                            />
+                        </div>
                     </div>
 
                     {/* Gamma (mid-tone curve) */}
@@ -307,23 +311,25 @@ export function ControlPanel({
                             <span className="control-label">Gamma</span>
                             <span className="control-value">{options.gamma.toFixed(1)}</span>
                         </div>
-                        <Slider
-                            min={0.1}
-                            max={3}
-                            step={0.1}
-                            value={[options.gamma]}
-                            onValueChange={([v]: number[]) => onOptionChange('gamma', v, true)}
-                            style={{ marginTop: '8px' }}
-                        />
-                        <RecordButton
-                            knob="gamma"
-                            label="Gamma"
-                            baseOptions={options}
-                            imageUrl={imageUrl}
-                            capturePixels={capturePixels}
-                            width={480}
-                            height={360}
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: '8px' }}>
+                            <Slider
+                                min={0.1}
+                                max={3}
+                                step={0.1}
+                                value={[options.gamma]}
+                                onValueChange={([v]: number[]) => onOptionChange('gamma', v, true)}
+                                className="flex-1"
+                            />
+                            <RecordButton
+                                knob="gamma"
+                                label="Gamma"
+                                baseOptions={options}
+                                imageUrl={imageUrl}
+                                capturePixels={capturePixels}
+                                width={480}
+                                height={360}
+                            />
+                        </div>
                     </div>
                     <div style={{ marginTop: 'var(--space-4)' }}>
                         <Button
