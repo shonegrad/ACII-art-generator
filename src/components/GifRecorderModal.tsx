@@ -219,7 +219,7 @@ export function GifRecorderModal({
                             onClick={handleRecord}
                             disabled={recording}
                             variant="outline"
-                            className="w-full !text-primary !border-primary hover:bg-primary/10"
+                            className="w-full mt-3 !text-primary !border-primary hover:bg-primary/10"
                         >
                             🎥 Record {knobLabel} animation
                         </Button>
