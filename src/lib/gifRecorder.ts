@@ -34,7 +34,7 @@ export interface RecordResult {
     filename: string;
 }
 
-const KNOB_RANGES: Record<'brightness' | 'contrast' | 'gamma', { min: number; max: number }> = {
+export const KNOB_RANGES: Record<'brightness' | 'contrast' | 'gamma', { min: number; max: number }> = {
     brightness: { min: 0, max: 2 },
     contrast: { min: 0, max: 3 },
     gamma: { min: 0.1, max: 3 },

@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { type CharSetKey } from '@/lib/ascii-charsets';
 import { FORMAT_RATIOS, type FormatRatioKey } from '@/lib/format-ratios';
 import { renderAscii, SUPER_SAMPLE } from '@/lib/asciiRender';
+import { KNOB_RANGES } from '@/lib/gifRecorder';
 
 /** Colored character cell for colored ASCII output */
 export interface ColorCell {
@@ -50,6 +51,7 @@ export function useAsciiConverter() {
     const [imageInfo, setImageInfo] = useState<ImageInfo | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [options, setOptions] = useState<ConversionOptions>(DEFAULT_OPTIONS);
+    const [previewKnob, setPreviewKnob] = useState<'brightness' | 'contrast' | 'gamma' | null>(null);
 
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     // OffscreenCanvas is decoupled from the DOM; preferred processing surface
@@ -57,6 +59,15 @@ export function useAsciiConverter() {
     const offscreenCanvasRef = useRef<OffscreenCanvas | null>(null);
     const processingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const cancelledRef = useRef(false);
+
+    // Preview state for live animation preview (not a GIF export)
+    const previewKnobRef = useRef<'brightness' | 'contrast' | 'gamma' | null>(null);
+    const previewActiveRef = useRef(false);
+    const previewStartTimeRef = useRef<number>(0);
+    const previewFrameRef = useRef<number>(0);
+    const previewPixelsRef = useRef<ImageData | null>(null);
+    const previewSrcWidthRef = useRef(0);
+    const previewSrcHeightRef = useRef(0);
 
     /** Acquire a 2D canvas surface sized for processing.
      *  Prefers OffscreenCanvas (no DOM sync, worker-compatible); falls back to
@@ -298,6 +309,84 @@ export function useAsciiConverter() {
         [getProcessingCanvas]
     );
 
+    /** Set the ASCII output directly for live preview (bypasses convert pipeline). */
+    const setPreviewFrame = useCallback((lines: string[], colorLines: ColorCell[][]) => {
+        setAsciiOutput(lines.join('\n'));
+        setColoredOutput(colorLines);
+    }, []);
+
+    /** Start a live preview animation for the given knob. */
+    const startPreview = useCallback(
+        async (
+            knob: 'brightness' | 'contrast' | 'gamma',
+            imageUrl: string | null,
+            width: number,
+            height: number
+        ) => {
+            if (previewActiveRef.current) stopPreview();
+            if (!imageUrl) return;
+
+            // Capture supersampled source pixels once for fast re-rendering
+            const imageData = await captureSupersampledPixels(imageUrl, width, height);
+            previewPixelsRef.current = imageData;
+            previewSrcWidthRef.current = imageData.width;
+            previewSrcHeightRef.current = imageData.height;
+            previewKnobRef.current = knob;
+            setPreviewKnob(knob);
+            previewActiveRef.current = true;
+            previewStartTimeRef.current = performance.now();
+
+            const loop = () => {
+                if (!previewActiveRef.current) return;
+
+                const now = performance.now();
+                const elapsed = (now - previewStartTimeRef.current) / 1000; // seconds
+                const duration = 2; // 2 second cycle
+                const cycle = elapsed % duration;
+                const t = cycle / duration; // 0 → 1 over duration
+
+                // Boomerang: forward then back
+                const tBoomerang = t < 0.5 ? t * 2 : (1 - t) * 2;
+
+                const { min, max } = KNOB_RANGES[knob];
+                const value = min + (max - min) * tBoomerang;
+
+                // Re-render with animated knob value using pure render (fast)
+                const { lines, colorLines } = renderAscii(
+                    previewPixelsRef.current!.data,
+                    previewSrcWidthRef.current,
+                    previewSrcHeightRef.current,
+                    Math.max(1, Math.floor(width / 12)),
+                    Math.max(1, Math.floor(height / 14)),
+                    { ...options, [knob]: value } as ConversionOptions
+                );
+
+                setPreviewFrame(lines, colorLines);
+                previewFrameRef.current = requestAnimationFrame(loop);
+            };
+            previewFrameRef.current = requestAnimationFrame(loop);
+        },
+        [captureSupersampledPixels, renderAscii, setPreviewFrame, options]
+    );
+
+    /** Stop the live preview and restore the original option value. */
+    const stopPreview = useCallback(() => {
+        previewActiveRef.current = false;
+        if (previewFrameRef.current) {
+            cancelAnimationFrame(previewFrameRef.current);
+        }
+        previewKnobRef.current = null;
+        setPreviewKnob(null);
+        previewPixelsRef.current = null;
+    }, []);
+
+    // Cleanup preview on unmount
+    useEffect(() => {
+        return () => {
+            stopPreview();
+        };
+    }, [stopPreview]);
+
     return {
         asciiOutput,
         coloredOutput,
@@ -310,5 +399,8 @@ export function useAsciiConverter() {
         updateOption,
         setOptions,
         captureSupersampledPixels,
+        startPreview,
+        stopPreview,
+        previewKnob,
     };
 }

@@ -1,7 +1,11 @@
 /**
  * ASCII character set definitions for image-to-ASCII conversion.
  * Each set maps brightness values to characters with different visual styles.
+ *
+ * Character order: darkest → lightest. The last character should be a space
+ * for "empty" (white) pixels.
  */
+
 export const ASCII_CHAR_SETS = {
     standard: {
         name: 'Standard',
@@ -9,7 +13,7 @@ export const ASCII_CHAR_SETS = {
     },
     detailed: {
         name: 'Detailed',
-        chars: '@#W$9876543210?!abc;:+=-,._   ',
+        chars: '$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,"^`\'. ',
     },
     simple: {
         name: 'Simple',
@@ -21,11 +25,11 @@ export const ASCII_CHAR_SETS = {
     },
     dots: {
         name: 'Dots',
-        chars: '●◐○◌ ',
+        chars: '●◐○◌· ',
     },
     braille: {
         name: 'Braille',
-        chars: '⣿⣾⣽⣻⣟⣯⣷⣿⡿⠿⠻⠟⠯⠷⠿⡇⠇⠃⠁ ',
+        chars: '⣿⣾⣽⣻⣟⣯⣷⡿⠿⠻⠟⠯⠷⠿⡇⠇⠃⠁ ',
     },
     geometric: {
         name: 'Geometric',
@@ -49,7 +53,7 @@ export const ASCII_CHAR_SETS = {
     },
     minimal: {
         name: 'Minimal',
-        chars: '█░    ',
+        chars: '█░  ',
     },
     organic: {
         name: 'Organic',
@@ -61,7 +65,23 @@ export const ASCII_CHAR_SETS = {
     },
     artistic: {
         name: 'Artistic',
-        chars: '▓▒░▨▦▥▤▣▢▧▩⬜ '
+        chars: '▓▒░▨▦▥▤▣▢▧▩⬜ ',
+    },
+    ansi: {
+        name: 'ANSI',
+        chars: '█▓▒░█▓▒░ ',
+    },
+    terminal: {
+        name: 'Terminal',
+        chars: '#@%*+=-:. ',
+    },
+    circular: {
+        name: 'Circular',
+        chars: '◉○◌◯◍◎◐◑◒◓◔ ',
+    },
+    shading: {
+        name: 'Shading',
+        chars: '▓▒░█▓▒░ ',
     },
 } as const;
 

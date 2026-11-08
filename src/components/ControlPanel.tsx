@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { FORMAT_RATIOS, type FormatRatioKey } from '@/lib/format-ratios';
 import { DEFAULT_OPTIONS, type ConversionOptions, type ImageInfo } from '@/hooks/useAsciiConverter';
 import { RecordButton } from './RecordButton';
+import { PlayButton } from './PlayButton';
 
 interface ControlPanelProps {
     selectedImage: string | null;
@@ -34,6 +35,12 @@ interface ControlPanelProps {
     gifWidth: number;
     /** GIF canvas height preserving source aspect ratio */
     gifHeight: number;
+    /** Currently previewing knob (null = not previewing) */
+    previewKnob: 'brightness' | 'contrast' | 'gamma' | null;
+    /** Start live preview animation */
+    startPreview: (knob: 'brightness' | 'contrast' | 'gamma', imageUrl: string | null, width: number, height: number) => Promise<void>;
+    /** Stop live preview animation */
+    stopPreview: () => void;
 
 }
 
@@ -53,6 +60,9 @@ export function ControlPanel({
     imageUrl,
     gifWidth,
     gifHeight,
+    previewKnob,
+    startPreview,
+    stopPreview,
 }: ControlPanelProps) {
     const { theme, setTheme } = useTheme();
 
@@ -281,6 +291,16 @@ export function ControlPanel({
                                 width={gifWidth}
                                 height={gifHeight}
                             />
+                            <PlayButton
+                                knob="brightness"
+                                label="Brightness"
+                                previewKnob={previewKnob}
+                                startPreview={startPreview}
+                                stopPreview={stopPreview}
+                                imageUrl={imageUrl}
+                                width={gifWidth}
+                                height={gifHeight}
+                            />
                         </div>
                     </div>
 
@@ -308,6 +328,16 @@ export function ControlPanel({
                                 width={gifWidth}
                                 height={gifHeight}
                             />
+                            <PlayButton
+                                knob="contrast"
+                                label="Contrast"
+                                previewKnob={previewKnob}
+                                startPreview={startPreview}
+                                stopPreview={stopPreview}
+                                imageUrl={imageUrl}
+                                width={gifWidth}
+                                height={gifHeight}
+                            />
                         </div>
                     </div>
 
@@ -332,6 +362,16 @@ export function ControlPanel({
                                 baseOptions={options}
                                 imageUrl={imageUrl}
                                 capturePixels={capturePixels}
+                                width={gifWidth}
+                                height={gifHeight}
+                            />
+                            <PlayButton
+                                knob="gamma"
+                                label="Gamma"
+                                previewKnob={previewKnob}
+                                startPreview={startPreview}
+                                stopPreview={stopPreview}
+                                imageUrl={imageUrl}
                                 width={gifWidth}
                                 height={gifHeight}
                             />
