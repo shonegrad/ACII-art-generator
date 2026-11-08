@@ -52,12 +52,9 @@ export function useAsciiConverter() {
     const [options, setOptions] = useState<ConversionOptions>(DEFAULT_OPTIONS);
 
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
-    // OffscreenCanvas is decoupled from the DOM and can be transferred to a
-    // Web Worker, making it the preferred surface for pixel processing
-    // (progressive enhancement; falls back to a hidden DOM canvas).
+    // OffscreenCanvas is decoupled from the DOM; preferred processing surface
+    // with hidden DOM canvas fallback.
     const offscreenCanvasRef = useRef<OffscreenCanvas | null>(null);
-    // Worker reference (lazily created) for off-main-thread conversion.
-    const workerRef = useRef<Worker | null>(null);
     const processingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const cancelledRef = useRef(false);
 
@@ -90,31 +87,13 @@ export function useAsciiConverter() {
         []
     );
 
-    /** Lazily create a Web Worker for off-main-thread ASCII conversion.
-     *  Vite bundles the worker entry point; falls back to local rendering
-     *  when Workers are unavailable.
-     */
-    const getWorker = useCallback((): Worker | null => {
-        if (typeof Worker === 'undefined') return null;
-        if (!workerRef.current) {
-            workerRef.current = new Worker(
-                new URL('../workers/asciiWorker.ts', import.meta.url)
-            );
-        }
-        return workerRef.current;
-    }, []);
-
-    // Cleanup timeout, mark cancelled on unmount, and terminate the worker
-    // so in-flight work doesn't set state on an unmounted component.
+    // Cleanup timeout and mark cancelled on unmount so in-flight
+    // image loads don't set state on an unmounted component.
     useEffect(() => {
         return () => {
             cancelledRef.current = true;
             if (processingTimeoutRef.current) {
                 clearTimeout(processingTimeoutRef.current);
-            }
-            if (workerRef.current) {
-                workerRef.current.terminate();
-                workerRef.current = null;
             }
         };
     }, []);
@@ -195,58 +174,23 @@ export function useAsciiConverter() {
                     const srcWidth = finalWidth * SUPER_SAMPLE;
                     const srcHeight = finalHeight * SUPER_SAMPLE;
 
-                    const worker = getWorker();
-                    if (worker) {
-                        // Offload pixel sampling + character mapping to the worker.
-                        // imageData.data is transferred (zero-copy) to the worker.
-                        worker.onmessage = (e: MessageEvent<{
-                            asciiOutput: string;
-                            coloredOutput: ColorCell[][];
-                        }>) => {
-                            if (cancelledRef.current) return;
-                            const { asciiOutput, coloredOutput } = e.data;
-                            setAsciiOutput(asciiOutput);
-                            setColoredOutput(opts.colorMode ? coloredOutput : []);
-                            clearTimeout(safetyTimeout);
-                            setIsProcessing(false);
-                            if (asciiOutput.length === 0) {
-                                toast.error('No ASCII output generated');
-                            } else {
-                                toast.success(
-                                    `ASCII art generated! (${finalWidth}×${finalHeight} characters)`
-                                );
-                            }
-                        };
-                        worker.postMessage(
-                            {
-                                data: imageData.data,
-                                width: srcWidth,
-                                height: srcHeight,
-                                finalWidth,
-                                finalHeight,
-                                opts,
-                            },
-                            [imageData.data]
-                        );
+                    const { lines, colorLines } = renderAscii(
+                        imageData.data,
+                        srcWidth,
+                        srcHeight,
+                        finalWidth,
+                        finalHeight,
+                        opts
+                    );
+                    const asciiOutput = lines.join('\n');
+                    setAsciiOutput(asciiOutput);
+                    setColoredOutput(opts.colorMode ? colorLines : []);
+                    clearTimeout(safetyTimeout);
+                    setIsProcessing(false);
+                    if (asciiOutput.length === 0) {
+                        toast.error('No ASCII output generated');
                     } else {
-                        const { lines, colorLines } = renderAscii(
-                            imageData.data,
-                            srcWidth,
-                            srcHeight,
-                            finalWidth,
-                            finalHeight,
-                            opts
-                        );
-                        const asciiOutput = lines.join('\n');
-                        setAsciiOutput(asciiOutput);
-                        setColoredOutput(opts.colorMode ? colorLines : []);
-                        clearTimeout(safetyTimeout);
-                        setIsProcessing(false);
-                        if (asciiOutput.length === 0) {
-                            toast.error('No ASCII output generated');
-                        } else {
-                            toast.success(`ASCII art generated! (${finalWidth}×${lines.length} characters)`);
-                        }
+                        toast.success(`ASCII art generated! (${finalWidth}×${lines.length} characters)`);
                     }
                 } catch (error) {
                     toast.error(`Failed to process image: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -264,7 +208,7 @@ export function useAsciiConverter() {
 
             img.src = imageUrl;
         },
-        [getProcessingCanvas, getWorker]
+        [getProcessingCanvas]
     );
 
     /** Debounced convert for slider changes */
