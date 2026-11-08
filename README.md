@@ -27,7 +27,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ## 📦 Tech Stack
 
@@ -67,7 +67,7 @@ ASCII Art Generator/
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start development server on port 3000 |
+| `npm run dev` | Start development server on port 5173 |
 | `npm run build` | Build for production |
 | `npm run test` | Run tests |
 | `npm run test:watch` | Run tests in watch mode |
