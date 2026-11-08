@@ -8,7 +8,7 @@ import type { CharSetKey } from '@/lib/ascii-charsets';
 
 export function ImageToAscii() {
   const converter = useAsciiConverter();
-  const { asciiOutput, coloredOutput, imageInfo, isProcessing, options, canvasRef, convert, updateOption } = converter;
+  const { asciiOutput, coloredOutput, imageInfo, isProcessing, options, canvasRef, convert, updateOption, captureSupersampledPixels } = converter;
 
   const onImageReady = useCallback(
     (url: string) => {
@@ -55,6 +55,8 @@ export function ImageToAscii() {
         onRemoveImage={upload.handleRemoveImage}
         onProcessFile={upload.processFile}
         onOptionChange={handleOptionChange}
+        capturePixels={captureSupersampledPixels}
+        imageUrl={upload.selectedImage}
       />
 
       <AsciiPreview

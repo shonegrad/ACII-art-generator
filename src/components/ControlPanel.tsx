@@ -7,6 +7,7 @@ import { Switch } from './ui/switch';
 import { toast } from 'sonner';
 import { FORMAT_RATIOS, type FormatRatioKey } from '@/lib/format-ratios';
 import { DEFAULT_OPTIONS, type ConversionOptions, type ImageInfo } from '@/hooks/useAsciiConverter';
+import { RecordButton } from './RecordButton';
 
 interface ControlPanelProps {
     selectedImage: string | null;
@@ -25,6 +26,10 @@ interface ControlPanelProps {
         value: ConversionOptions[K],
         debounce?: boolean
     ) => void;
+    /** Render supersampled source pixels for GIF recording */
+    capturePixels: (url: string, width: number, height: number) => Promise<ImageData>;
+    /** Current source image URL */
+    imageUrl: string | null;
 
 }
 
@@ -40,6 +45,8 @@ export function ControlPanel({
     onRemoveImage,
     onProcessFile,
     onOptionChange,
+    capturePixels,
+    imageUrl,
 }: ControlPanelProps) {
     const { theme, setTheme } = useTheme();
 
@@ -251,17 +258,26 @@ export function ControlPanel({
                             <span className="control-value">{options.brightness.toFixed(1)}</span>
                         </div>
                         <Slider
-                            min={-2}
+                            min={0}
                             max={2}
                             step={0.1}
                             value={[options.brightness]}
                             onValueChange={([v]: number[]) => onOptionChange('brightness', v, true)}
                             style={{ marginTop: '8px' }}
                         />
+                        <RecordButton
+                            knob="brightness"
+                            label="Brightness"
+                            baseOptions={options}
+                            imageUrl={imageUrl}
+                            capturePixels={capturePixels}
+                            width={480}
+                            height={360}
+                        />
                     </div>
 
                     {/* Contrast */}
-                    <div>
+                    <div style={{ marginBottom: 'var(--space-3)' }}>
                         <div className="control-row">
                             <span className="control-label">Contrast</span>
                             <span className="control-value">{options.contrast.toFixed(1)}</span>
@@ -273,6 +289,15 @@ export function ControlPanel({
                             value={[options.contrast]}
                             onValueChange={([v]: number[]) => onOptionChange('contrast', v, true)}
                             style={{ marginTop: '8px' }}
+                        />
+                        <RecordButton
+                            knob="contrast"
+                            label="Contrast"
+                            baseOptions={options}
+                            imageUrl={imageUrl}
+                            capturePixels={capturePixels}
+                            width={480}
+                            height={360}
                         />
                     </div>
 
@@ -289,6 +314,15 @@ export function ControlPanel({
                             value={[options.gamma]}
                             onValueChange={([v]: number[]) => onOptionChange('gamma', v, true)}
                             style={{ marginTop: '8px' }}
+                        />
+                        <RecordButton
+                            knob="gamma"
+                            label="Gamma"
+                            baseOptions={options}
+                            imageUrl={imageUrl}
+                            capturePixels={capturePixels}
+                            width={480}
+                            height={360}
                         />
                     </div>
                     <div style={{ marginTop: 'var(--space-4)' }}>

@@ -301,6 +301,59 @@ export function useAsciiConverter() {
         [convert, debouncedConvert]
     );
 
+    /** Render the source image to a supersampled canvas and return its ImageData.
+     *  Used by the GIF recorder to get source pixels without touching the live preview.
+     */
+    const captureSupersampledPixels = useCallback(
+        (imageUrl: string, finalWidth: number, finalHeight: number): Promise<ImageData> => {
+            return new Promise((resolve, reject) => {
+                const img = document.createElement('img');
+                img.crossOrigin = 'Anonymous';
+                img.onload = () => {
+                    try {
+                        const canvas = getProcessingCanvas(
+                            finalWidth * SUPER_SAMPLE,
+                            finalHeight * SUPER_SAMPLE
+                        );
+                        const ctx = canvas.getContext('2d');
+                        if (!ctx) {
+                            reject(new Error('Cannot get canvas context'));
+                            return;
+                        }
+                        ctx.clearRect(
+                            0,
+                            0,
+                            finalWidth * SUPER_SAMPLE,
+                            finalHeight * SUPER_SAMPLE
+                        );
+                        ctx.drawImage(
+                            img,
+                            0,
+                            0,
+                            finalWidth * SUPER_SAMPLE,
+                            finalHeight * SUPER_SAMPLE
+                        );
+                        resolve(
+                            ctx.getImageData(
+                                0,
+                                0,
+                                finalWidth * SUPER_SAMPLE,
+                                finalHeight * SUPER_SAMPLE
+                            )
+                        );
+                    } catch (err) {
+                        reject(err);
+                    }
+                };
+                img.onerror = () => {
+                    reject(new Error('Failed to load image'));
+                };
+                img.src = imageUrl;
+            });
+        },
+        [getProcessingCanvas]
+    );
+
     return {
         asciiOutput,
         coloredOutput,
@@ -312,5 +365,6 @@ export function useAsciiConverter() {
         debouncedConvert,
         updateOption,
         setOptions,
+        captureSupersampledPixels,
     };
 }

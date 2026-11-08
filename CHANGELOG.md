@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OffscreenCanvas processing surface with DOM canvas fallback
 - Web-Worker-ready conversion pipeline
 - ARIA labels on theme toggle and Invert/Color switches
+- Animated GIF recording: record per-knob animations (brightness/contrast/gamma sweep) with configurable duration/FPS/loop, plus Web Worker-based GIF encoding via gif.js
 
 ### Fixed
 
