@@ -107,14 +107,20 @@ export function GifRecorderModal({
         <div
             className="fixed inset-0 z-50 flex items-center justify-center"
             style={{
-                backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                backdropFilter: 'blur(4px)',
+                backgroundColor: 'rgba(10, 10, 10, 0.85)',
+                backdropFilter: 'blur(8px)',
             }}
             onClick={handleClose}
         >
             <div
-                className="bg-surface-1 border border-outline-variant rounded-xl p-6 shadow-xl text-on-surface"
-                style={{ minWidth: '320px', maxWidth: '440px', width: '90vw' }}
+                className="bg-surface-1 border border-outline-variant rounded-xl p-6 shadow-2xl text-on-surface"
+                style={{
+                    minWidth: '320px',
+                    maxWidth: '440px',
+                    width: '90vw',
+                    backgroundColor: 'var(--surface-1)',
+                    color: 'var(--on-surface)',
+                }}
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between mb-4">
