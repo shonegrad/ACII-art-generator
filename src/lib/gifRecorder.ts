@@ -51,8 +51,9 @@ const KNOB_LABELS: Record<'brightness' | 'contrast' | 'gamma', string> = {
 
 /** Render ASCII lines to an offscreen canvas, tiling characters edge-to-edge
  *  so the whole canvas is filled (no gaps or clipped edges). Character cells
- *  are placed at the measured charWidth/lineHeight grid so each cell aligns
- *  exactly and the text fills the canvas width/height. */
+ *  are placed at the exact cellWidth/cellHeight grid computed from the canvas
+ *  size divided by grid dimensions, guaranteeing full coverage.
+ */
 function renderAsciiToCanvas(
     lines: string[],
     colorLines: ColorCell[][],
@@ -60,8 +61,8 @@ function renderAsciiToCanvas(
     width: number,
     height: number,
     fontSize: number,
-    charWidth: number,
-    lineHeight: number
+    cellWidth: number,
+    cellHeight: number
 ): HTMLCanvasElement {
     const canvas = document.createElement('canvas');
     canvas.width = width;
@@ -81,18 +82,18 @@ function renderAsciiToCanvas(
         colorLines.forEach((line, lineIndex) => {
             line.forEach((cell, charIndex) => {
                 ctx.fillStyle = cell.color;
-                ctx.fillText(cell.char, charIndex * charWidth, lineIndex * lineHeight);
+                ctx.fillText(cell.char, charIndex * cellWidth, lineIndex * cellHeight);
             });
         });
     } else {
         ctx.fillStyle = '#000000';
         lines.forEach((line, index) => {
             // Draw each character individually so every cell aligns to the
-            // measured grid and the text fills the canvas width exactly.
+            // exact cell grid and the text fills the canvas width/height.
             for (let i = 0; i < line.length; i++) {
                 const ch = line[i];
                 if (ch !== ' ') {
-                    ctx.fillText(ch, i * charWidth, index * lineHeight);
+                    ctx.fillText(ch, i * cellWidth, index * cellHeight);
                 }
             }
         });
@@ -177,11 +178,15 @@ export async function recordKnobGif({
         }
         measureCtx.font = `${DEFAULT_FONT_SIZE}px 'Courier New', Courier, monospace`;
         const charWidth = measureCtx.measureText('M').width || DEFAULT_FONT_SIZE * 0.6;
-        const lineHeight = DEFAULT_FONT_SIZE * 1.15;
 
         // Size the ASCII grid to fill the output canvas exactly.
+        // Use measured char metrics to pick grid dimensions, then compute
+        // exact cellWidth/cellHeight so finalWidth * cellWidth === width
+        // and finalHeight * cellHeight === height — zero gaps.
         const finalWidth = Math.max(1, Math.floor(width / charWidth));
-        const finalHeight = Math.max(1, Math.floor(height / lineHeight));
+        const finalHeight = Math.max(1, Math.floor(height / charWidth * 1.15));
+        const cellWidth = width / finalWidth;
+        const cellHeight = height / finalHeight;
 
         const renderNextFrame = () => {
             if (frameIndex >= totalFrames) {
@@ -228,8 +233,8 @@ export async function recordKnobGif({
                 width,
                 height,
                 DEFAULT_FONT_SIZE,
-                charWidth,
-                lineHeight
+                cellWidth,
+                cellHeight
             );
 
             gif.addFrame(frameCanvas, { delay: Math.round(100 / fps), copy: true });
