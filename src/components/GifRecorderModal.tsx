@@ -54,6 +54,7 @@ export function GifRecorderModal({
 
     const handleRecord = useCallback(async () => {
         if (recording) return;
+        if (!imageUrl) return;
         setRecording(true);
         setProgress(0);
 

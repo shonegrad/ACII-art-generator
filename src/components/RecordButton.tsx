@@ -36,15 +36,15 @@ export function RecordButton({
     height = DEFAULT_HEIGHT,
 }: RecordButtonProps) {
     const [modalOpen, setModalOpen] = useState(false);
-
-    if (!imageUrl) return null;
+    const disabled = !imageUrl;
 
     return (
         <>
             <button
                 onClick={() => setModalOpen(true)}
-                title={`Record ${label} animation (GIF)`}
-                aria-label={`Record ${label} animation`}
+                disabled={disabled}
+                title={disabled ? 'Load an image to record' : `Record ${label} animation (GIF)`}
+                aria-label={disabled ? 'Record animation (load an image first)' : `Record ${label} animation`}
                 className="inline-flex items-center justify-center rounded border border-primary text-primary bg-transparent py-1 px-2 text-xs font-medium hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 🎥
@@ -55,7 +55,7 @@ export function RecordButton({
                 onClose={() => setModalOpen(false)}
                 knob={knob}
                 baseOptions={baseOptions}
-                imageUrl={imageUrl}
+                imageUrl={imageUrl || ''}
                 capturePixels={capturePixels}
                 width={width}
                 height={height}
