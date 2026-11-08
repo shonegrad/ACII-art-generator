@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useAsciiConverter, type ConversionOptions } from '@/hooks/useAsciiConverter';
 import { useImageUpload } from '@/hooks/useImageUpload';
 import { useExport } from '@/hooks/useExport';
@@ -41,6 +41,21 @@ export function ImageToAscii() {
     [handleOptionChange]
   );
 
+  /** Compute GIF canvas dimensions preserving source image aspect ratio.
+   *  Max width 480px; height derived from aspect ratio (capped at 720px max). */
+  const gifDimensions = useMemo(() => {
+    if (!imageInfo) return { width: 480, height: 360 };
+    const maxWidth = 480;
+    const maxHeight = 720;
+    let width = maxWidth;
+    let height = Math.floor(width / imageInfo.aspectRatio);
+    if (height > maxHeight) {
+        height = maxHeight;
+        width = Math.floor(height * imageInfo.aspectRatio);
+    }
+    return { width, height };
+  }, [imageInfo]);
+
   return (
     <div className="app-layout">
       <ControlPanel
@@ -57,6 +72,8 @@ export function ImageToAscii() {
         onOptionChange={handleOptionChange}
         capturePixels={captureSupersampledPixels}
         imageUrl={upload.selectedImage}
+        gifWidth={gifDimensions.width}
+        gifHeight={gifDimensions.height}
       />
 
       <AsciiPreview

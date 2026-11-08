@@ -30,6 +30,10 @@ interface ControlPanelProps {
     capturePixels: (url: string, width: number, height: number) => Promise<ImageData>;
     /** Current source image URL */
     imageUrl: string | null;
+    /** GIF canvas width preserving source aspect ratio */
+    gifWidth: number;
+    /** GIF canvas height preserving source aspect ratio */
+    gifHeight: number;
 
 }
 
@@ -47,6 +51,8 @@ export function ControlPanel({
     onOptionChange,
     capturePixels,
     imageUrl,
+    gifWidth,
+    gifHeight,
 }: ControlPanelProps) {
     const { theme, setTheme } = useTheme();
 
@@ -272,8 +278,8 @@ export function ControlPanel({
                                 baseOptions={options}
                                 imageUrl={imageUrl}
                                 capturePixels={capturePixels}
-                                width={480}
-                                height={360}
+                                width={gifWidth}
+                                height={gifHeight}
                             />
                         </div>
                     </div>
@@ -299,8 +305,8 @@ export function ControlPanel({
                                 baseOptions={options}
                                 imageUrl={imageUrl}
                                 capturePixels={capturePixels}
-                                width={480}
-                                height={360}
+                                width={gifWidth}
+                                height={gifHeight}
                             />
                         </div>
                     </div>
@@ -326,8 +332,8 @@ export function ControlPanel({
                                 baseOptions={options}
                                 imageUrl={imageUrl}
                                 capturePixels={capturePixels}
-                                width={480}
-                                height={360}
+                                width={gifWidth}
+                                height={gifHeight}
                             />
                         </div>
                     </div>
