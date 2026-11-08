@@ -364,17 +364,15 @@ export function useAsciiConverter() {
                 const value = min + (max - min) * tBoomerang;
 
                 // Re-render with animated knob value using pure render (fast)
-                // Compute grid dimensions preserving source image aspect ratio.
-                // Character cells are ~2x taller than wide (charAspectRatio ≈ 0.5),
-                // so we apply that multiplier to prevent vertical stretching.
+                // Fixed grid width so preview size stays stable across frames
+                // regardless of source image dimensions. Height varies with
+                // aspect ratio so the art isn't vertically stretched.
                 const imageAspectRatio =
                     previewSrcHeightRef.current / previewSrcWidthRef.current; // height/width
-                const gridWidth = Math.max(20, Math.min(120, Math.floor(width / 10)));
+                const gridWidth = 80;
                 const gridHeight = Math.max(
                     10,
-                    Math.floor(
-                        gridWidth * imageAspectRatio * previewCharAspectRef.current
-                    )
+                    Math.floor(gridWidth * imageAspectRatio * previewCharAspectRef.current)
                 );
 
                 const { lines, colorLines } = renderAscii(
