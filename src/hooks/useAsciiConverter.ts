@@ -50,9 +50,42 @@ export function useAsciiConverter() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [options, setOptions] = useState<ConversionOptions>(DEFAULT_OPTIONS);
 
-    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    // OffscreenCanvas is decoupled from the DOM and can be transferred to a
+    // Web Worker, making it the preferred surface for pixel processing
+    // (progressive enhancement; falls back to a hidden DOM canvas).
+    const offscreenCanvasRef = useRef<OffscreenCanvas | null>(null);
     const processingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const cancelledRef = useRef(false);
+
+    /** Acquire a 2D canvas surface sized for processing.
+     *  Prefers OffscreenCanvas (no DOM sync, worker-compatible); falls back to
+     *  a hidden <canvas> element in older browsers.
+     */
+    const getProcessingCanvas = useCallback(
+        (width: number, height: number): HTMLCanvasElement | OffscreenCanvas => {
+            if (typeof OffscreenCanvas !== 'undefined') {
+                const existing = offscreenCanvasRef.current;
+                if (existing && existing.width === width && existing.height === height) {
+                    return existing;
+                }
+                const canvas = new OffscreenCanvas(width, height);
+                offscreenCanvasRef.current = canvas;
+                return canvas;
+            }
+            let domCanvas = canvasRef.current;
+            if (!domCanvas) {
+                domCanvas = document.createElement('canvas');
+                domCanvas.style.display = 'none';
+                document.body.appendChild(domCanvas);
+                canvasRef.current = domCanvas;
+            }
+            domCanvas.width = width;
+            domCanvas.height = height;
+            return domCanvas;
+        },
+        []
+    );
 
     // Cleanup timeout and mark cancelled on unmount so in-flight
     // image loads don't set state on an unmounted component.
@@ -96,20 +129,6 @@ export function useAsciiConverter() {
                         aspectRatio: originalAspectRatio,
                     });
 
-                    const canvas = canvasRef.current;
-                    if (!canvas) {
-                        setIsProcessing(false);
-                        toast.error('Canvas not available');
-                        return;
-                    }
-
-                    const ctx = canvas.getContext('2d');
-                    if (!ctx) {
-                        setIsProcessing(false);
-                        toast.error('Cannot get canvas context');
-                        return;
-                    }
-
                     // Calculate dimensions
                     const finalWidth = Math.max(Math.min(opts.width, 200), 10);
                     let finalHeight: number;
@@ -128,8 +147,15 @@ export function useAsciiConverter() {
 
                     finalHeight = Math.max(Math.min(finalHeight, 200), 10);
 
-                    canvas.width = finalWidth;
-                    canvas.height = finalHeight;
+                    // Acquire a processing canvas (OffscreenCanvas preferred, DOM fallback)
+                    const canvas = getProcessingCanvas(finalWidth, finalHeight);
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        setIsProcessing(false);
+                        toast.error('Cannot get canvas context');
+                        return;
+                    }
+
                     ctx.clearRect(0, 0, finalWidth, finalHeight);
                     ctx.drawImage(img, 0, 0, finalWidth, finalHeight);
 
@@ -228,7 +254,7 @@ export function useAsciiConverter() {
 
             img.src = imageUrl;
         },
-        []
+        [getProcessingCanvas]
     );
 
     /** Debounced convert for slider changes */

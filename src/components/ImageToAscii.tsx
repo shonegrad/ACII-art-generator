@@ -70,8 +70,8 @@ export function ImageToAscii() {
         onFileDrop={upload.processFile}
       />
 
-      {/* Hidden canvas for image processing */}
-      <canvas ref={canvasRef} style={{ display: 'none' }} />
+      {/* Hidden canvas for image processing (OffscreenCanvas preferred; DOM fallback) */}
+      {typeof OffscreenCanvas === 'undefined' && <canvas ref={canvasRef} style={{ display: 'none' }} />}
     </div>
   );
 }

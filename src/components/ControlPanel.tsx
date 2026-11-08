@@ -53,6 +53,7 @@ export function ControlPanel({
                 <button
                     onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                     aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                    aria-pressed={theme === 'light'}
                     title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
                     style={{
                         background: 'none',
