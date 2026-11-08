@@ -1,10 +1,11 @@
 /**
- * Small record (🎥) button placed beside an animated slider knob.
+ * Small record (●) button placed beside an animated slider knob.
  * Clicking it opens the GIF recorder modal for that knob.
  */
 
 import { useState } from 'react';
 import type { ConversionOptions } from '@/hooks/useAsciiConverter';
+import { Button } from './ui/button';
 import { GifRecorderModal } from './GifRecorderModal';
 
 interface RecordButtonProps {
@@ -40,15 +41,17 @@ export function RecordButton({
 
     return (
         <>
-            <button
+            <Button
                 onClick={() => setModalOpen(true)}
                 disabled={disabled}
+                variant="outline"
+                size="icon"
+                aria-label={`Record ${label} animation`}
                 title={disabled ? 'Load an image to record' : `Record ${label} animation (GIF)`}
-                aria-label={disabled ? 'Record animation (load an image first)' : `Record ${label} animation`}
-                className="inline-flex items-center justify-center rounded border border-primary text-primary bg-transparent py-1 px-2 text-xs font-medium hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="!text-primary !border-primary hover:bg-primary/10"
             >
                 ●
-            </button>
+            </Button>
 
             <GifRecorderModal
                 open={modalOpen}
