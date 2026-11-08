@@ -2,16 +2,18 @@
 
 A modern web application for converting text and images into ASCII art. Built with React, TypeScript, and Tailwind CSS.
 
-![Version](https://img.shields.io/badge/version-0.1.0-blue)
+![Version](https://img.shields.io/badge/version-0.2.0-blue)
 ![React](https://img.shields.io/badge/React-18.3.1-61dafb)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## ✨ Features
 
-- **Text to ASCII** - Convert text into stylized ASCII art with multiple font styles (Block, Small, Thin)
-- **ASCII Banner** - Create decorative banners with customizable borders and styles
-- **Image to ASCII** - Transform images into ASCII art with multiple character sets and adjustable width
+- **Image to ASCII** - Transform images into ASCII art with multiple character sets, adjustable width, brightness/contrast/gamma controls, invert and color modes, and format-ratio presets
+- **Export** - Download your ASCII art as TXT, PNG, or SVG
+- **Copy to clipboard** - Copy the generated ASCII art with modern/legacy/manual fallbacks
+- **Image input** - Upload via file picker, drag-and-drop, sample image, or random image from picsum.photos
+- **Theming** - Dark and light mode with user-controlled theme switching
 
 ## 🚀 Quick Start
 
@@ -46,14 +48,18 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 ASCII Art Generator/
 ├── src/
 │   ├── components/
-│   │   ├── ui/              # shadcn/ui components (48 files)
-│   │   ├── utils/           # Utility functions
-│   │   ├── AsciiArtGenerator.tsx
-│   │   ├── AsciiBanner.tsx
-│   │   └── ImageToAscii.tsx
-│   ├── styles/
+│   │   ├── ui/              # shadcn/ui components (button, select, slider, switch, ...)
+│   │   ├── utils/           # Utility functions (clipboard)
+│   │   ├── AsciiPreview.tsx
+│   │   ├── ControlPanel.tsx
+│   │   ├── ErrorBoundary.tsx
+│   │   ├── ImageToAscii.tsx
+│   │   └── theme-provider.tsx
+│   ├── hooks/               # useAsciiConverter, useImageUpload, useExport
+│   ├── lib/                 # ascii-charsets, format-ratios
 │   ├── App.tsx
 │   ├── main.tsx
+│   ├── app.css
 │   └── index.css
 ├── .github/workflows/       # CI/CD pipelines
 ├── .agent/workflows/        # Agent workflows

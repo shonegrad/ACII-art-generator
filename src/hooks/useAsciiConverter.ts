@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
-import { ASCII_CHAR_SETS, type CharSetKey } from '@/lib/ascii-charsets';
+import { type CharSetKey } from '@/lib/ascii-charsets';
 import { FORMAT_RATIOS, type FormatRatioKey } from '@/lib/format-ratios';
+import { renderAscii, SUPER_SAMPLE } from '@/lib/asciiRender';
 
 /** Colored character cell for colored ASCII output */
 export interface ColorCell {
@@ -55,6 +56,8 @@ export function useAsciiConverter() {
     // Web Worker, making it the preferred surface for pixel processing
     // (progressive enhancement; falls back to a hidden DOM canvas).
     const offscreenCanvasRef = useRef<OffscreenCanvas | null>(null);
+    // Worker reference (lazily created) for off-main-thread conversion.
+    const workerRef = useRef<Worker | null>(null);
     const processingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const cancelledRef = useRef(false);
 
@@ -87,13 +90,31 @@ export function useAsciiConverter() {
         []
     );
 
-    // Cleanup timeout and mark cancelled on unmount so in-flight
-    // image loads don't set state on an unmounted component.
+    /** Lazily create a Web Worker for off-main-thread ASCII conversion.
+     *  Vite bundles the worker entry point; falls back to local rendering
+     *  when Workers are unavailable.
+     */
+    const getWorker = useCallback((): Worker | null => {
+        if (typeof Worker === 'undefined') return null;
+        if (!workerRef.current) {
+            workerRef.current = new Worker(
+                new URL('../workers/asciiWorker.ts', import.meta.url)
+            );
+        }
+        return workerRef.current;
+    }, []);
+
+    // Cleanup timeout, mark cancelled on unmount, and terminate the worker
+    // so in-flight work doesn't set state on an unmounted component.
     useEffect(() => {
         return () => {
             cancelledRef.current = true;
             if (processingTimeoutRef.current) {
                 clearTimeout(processingTimeoutRef.current);
+            }
+            if (workerRef.current) {
+                workerRef.current.terminate();
+                workerRef.current = null;
             }
         };
     }, []);
@@ -136,7 +157,6 @@ export function useAsciiConverter() {
                     // Apply format ratio if set, otherwise use image aspect ratio
                     const ratioConfig = FORMAT_RATIOS[opts.formatRatio];
                     if (ratioConfig.ratio !== null && opts.formatRatio !== 'free') {
-                        // Format ratio constrains the output shape
                         const targetRatio = 1 / ratioConfig.ratio; // height/width
                         finalHeight = Math.floor(finalWidth * targetRatio * opts.aspectRatioMultiplier);
                     } else if (opts.preserveAspectRatio) {
@@ -148,7 +168,7 @@ export function useAsciiConverter() {
                     finalHeight = Math.max(Math.min(finalHeight, 200), 10);
 
                     // Acquire a processing canvas (OffscreenCanvas preferred, DOM fallback)
-                    const canvas = getProcessingCanvas(finalWidth, finalHeight);
+                    const canvas = getProcessingCanvas(finalWidth * SUPER_SAMPLE, finalHeight * SUPER_SAMPLE);
                     const ctx = canvas.getContext('2d');
                     if (!ctx) {
                         setIsProcessing(false);
@@ -156,87 +176,77 @@ export function useAsciiConverter() {
                         return;
                     }
 
-                    ctx.clearRect(0, 0, finalWidth, finalHeight);
-                    ctx.drawImage(img, 0, 0, finalWidth, finalHeight);
+                    ctx.clearRect(0, 0, finalWidth * SUPER_SAMPLE, finalHeight * SUPER_SAMPLE);
+                    ctx.drawImage(
+                        img,
+                        0,
+                        0,
+                        finalWidth * SUPER_SAMPLE,
+                        finalHeight * SUPER_SAMPLE
+                    );
 
-                    const imageData = ctx.getImageData(0, 0, finalWidth, finalHeight);
-                    const pixels = imageData.data;
-                    const charSet = ASCII_CHAR_SETS[opts.charset];
-                    const chars = charSet.chars;
+                    const imageData = ctx.getImageData(
+                        0,
+                        0,
+                        finalWidth * SUPER_SAMPLE,
+                        finalHeight * SUPER_SAMPLE
+                    );
 
-                    const lines: string[] = [];
-                    const colorLines: ColorCell[][] = [];
+                    const srcWidth = finalWidth * SUPER_SAMPLE;
+                    const srcHeight = finalHeight * SUPER_SAMPLE;
 
-                    for (let y = 0; y < finalHeight; y++) {
-                        let line = '';
-                        const colorLine: ColorCell[] = [];
-
-                        for (let x = 0; x < finalWidth; x++) {
-                            const offset = (y * finalWidth + x) * 4;
-                            const r = pixels[offset] || 0;
-                            const g = pixels[offset + 1] || 0;
-                            const b = pixels[offset + 2] || 0;
-
-                            // Luminance → grayscale
-                            let gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-
-                            // Apply gamma correction (perceptual mid-tone weighting)
-                            // gamma < 1 brightens mid-tones, gamma > 1 darkens mid-tones
-                            const norm = gray / 255;
-                            gray = Math.round(255 * Math.pow(norm, 1 / opts.gamma));
-
-                            // Apply contrast
-                            gray = (gray - 128) * opts.contrast + 128;
-
-                            // Apply brightness
-                            gray = gray + (opts.brightness - 1) * 255;
-
-                            // Clamp
-                            gray = Math.max(0, Math.min(255, gray));
-
-                            // Invert
-                            if (opts.inverted) {
-                                gray = 255 - gray;
+                    const worker = getWorker();
+                    if (worker) {
+                        // Offload pixel sampling + character mapping to the worker.
+                        // imageData.data is transferred (zero-copy) to the worker.
+                        worker.onmessage = (e: MessageEvent<{
+                            asciiOutput: string;
+                            coloredOutput: ColorCell[][];
+                        }>) => {
+                            if (cancelledRef.current) return;
+                            const { asciiOutput, coloredOutput } = e.data;
+                            setAsciiOutput(asciiOutput);
+                            setColoredOutput(opts.colorMode ? coloredOutput : []);
+                            clearTimeout(safetyTimeout);
+                            setIsProcessing(false);
+                            if (asciiOutput.length === 0) {
+                                toast.error('No ASCII output generated');
+                            } else {
+                                toast.success(
+                                    `ASCII art generated! (${finalWidth}×${finalHeight} characters)`
+                                );
                             }
-                            // Map to character
-                            const charIndex = Math.min(
-                                Math.floor((gray / 255) * (chars.length - 1)),
-                                chars.length - 1
-                            );
-                            const selectedChar = chars[charIndex] || ' ';
-                            line += selectedChar;
-
-                            if (opts.colorMode) {
-                                colorLine.push({ char: selectedChar, color: `rgb(${r}, ${g}, ${b})` });
-                            }
-                        }
-
-                        // Pad to exact width
-                        lines.push(line.padEnd(finalWidth, ' ').substring(0, finalWidth));
-                        if (opts.colorMode) {
-                            colorLines.push(colorLine);
-                        }
-                    }
-
-                    // Ensure exact height
-                    while (lines.length < finalHeight) {
-                        lines.push(' '.repeat(finalWidth));
-                    }
-                    if (lines.length > finalHeight) {
-                        lines.splice(finalHeight);
-                    }
-
-                    const finalAscii = lines.join('\n');
-                    setAsciiOutput(finalAscii);
-                    setColoredOutput(opts.colorMode ? colorLines : []);
-
-                    clearTimeout(safetyTimeout);
-                    setIsProcessing(false);
-
-                    if (finalAscii.length === 0) {
-                        toast.error('No ASCII output generated');
+                        };
+                        worker.postMessage(
+                            {
+                                data: imageData.data,
+                                width: srcWidth,
+                                height: srcHeight,
+                                finalWidth,
+                                finalHeight,
+                                opts,
+                            },
+                            [imageData.data]
+                        );
                     } else {
-                        toast.success(`ASCII art generated! (${finalWidth}×${lines.length} characters)`);
+                        const { lines, colorLines } = renderAscii(
+                            imageData.data,
+                            srcWidth,
+                            srcHeight,
+                            finalWidth,
+                            finalHeight,
+                            opts
+                        );
+                        const asciiOutput = lines.join('\n');
+                        setAsciiOutput(asciiOutput);
+                        setColoredOutput(opts.colorMode ? colorLines : []);
+                        clearTimeout(safetyTimeout);
+                        setIsProcessing(false);
+                        if (asciiOutput.length === 0) {
+                            toast.error('No ASCII output generated');
+                        } else {
+                            toast.success(`ASCII art generated! (${finalWidth}×${lines.length} characters)`);
+                        }
                     }
                 } catch (error) {
                     toast.error(`Failed to process image: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -254,7 +264,7 @@ export function useAsciiConverter() {
 
             img.src = imageUrl;
         },
-        [getProcessingCanvas]
+        [getProcessingCanvas, getWorker]
     );
 
     /** Debounced convert for slider changes */
