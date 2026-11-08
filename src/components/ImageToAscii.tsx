@@ -48,10 +48,11 @@ export function ImageToAscii() {
     const maxWidth = 480;
     const maxHeight = 720;
     let width = maxWidth;
-    let height = Math.floor(width / imageInfo.aspectRatio);
+    // imageInfo.aspectRatio is height/width
+    let height = Math.floor(width * imageInfo.aspectRatio);
     if (height > maxHeight) {
         height = maxHeight;
-        width = Math.floor(height * imageInfo.aspectRatio);
+        width = Math.floor(height / imageInfo.aspectRatio);
     }
     return { width, height };
   }, [imageInfo]);
