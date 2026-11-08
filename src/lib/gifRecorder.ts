@@ -18,8 +18,8 @@ export interface RecordOptions {
     duration: number;
     /** Frames per second */
     fps: number;
-    /** GIF loop count (0 = infinite, -1 = no loop) */
-    loop: number;
+    /** GIF loop count (0 = infinite, -1 = no loop) or "boomerang" for forward-and-back */
+    loop: number | 'boomerang';
     /** Output canvas width in pixels */
     width: number;
     /** Output canvas height in pixels */
@@ -129,7 +129,15 @@ export async function recordKnobGif({
         throw new Error(`Invalid knob: ${knob}`);
     }
     const { min, max } = range;
-    const totalFrames = Math.max(1, Math.round(duration * fps));
+    const forwardFrames = Math.max(1, Math.round(duration * fps));
+
+    // Boomerang renders forward then backward (excluding max endpoint to avoid repeats)
+    const isBoomerang = loop === 'boomerang';
+    let backFrames = 0;
+    if (isBoomerang && forwardFrames > 1) {
+        backFrames = forwardFrames - 1;
+    }
+    const totalFrames = forwardFrames + backFrames;
 
     return new Promise((resolve, reject) => {
         let gif: InstanceType<typeof GIF>;
@@ -140,7 +148,7 @@ export async function recordKnobGif({
                 quality: 10,
                 width,
                 height,
-                repeat: loop,
+                repeat: typeof loop === 'number' ? loop : 0,
                 background: '#ffffff',
             });
         } catch (err) {
@@ -181,7 +189,17 @@ export async function recordKnobGif({
                 return;
             }
 
-            const t = frameIndex / Math.max(1, totalFrames - 1);
+            // Compute normalized position t (0→1) for this frame
+            let t: number;
+            if (isBoomerang && frameIndex >= forwardFrames) {
+                // Backward pass: max→min, excluding max at start
+                const backIndex = frameIndex - forwardFrames;
+                t = forwardFrames > 1 ? 1 - (backIndex + 1) / (forwardFrames - 1) : 0;
+            } else {
+                // Forward pass: min→max
+                t = forwardFrames > 1 ? frameIndex / (forwardFrames - 1) : 0;
+            }
+
             const value = min + (max - min) * t;
 
             // Explicitly set the animated knob while keeping others at base values

@@ -44,7 +44,7 @@ export function GifRecorderModal({
 }: GifRecorderModalProps) {
     const [duration, setDuration] = useState(DEFAULT_DURATION);
     const [fps, setFps] = useState(DEFAULT_FPS);
-    const [loop, setLoop] = useState(DEFAULT_LOOP);
+    const [loop, setLoop] = useState<number | 'boomerang'>(DEFAULT_LOOP);
     const [recording, setRecording] = useState(false);
     const [progress, setProgress] = useState(0);
 
@@ -179,7 +179,10 @@ export function GifRecorderModal({
                             </label>
                             <select
                                 value={loop}
-                                onChange={(e) => setLoop(Number(e.target.value))}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setLoop(val === 'boomerang' ? 'boomerang' : Number(val));
+                                }}
                                 className="w-full p-2 rounded border border-outline-variant bg-surface-2 text-on-surface"
                                 disabled={recording}
                             >
@@ -187,6 +190,7 @@ export function GifRecorderModal({
                                 <option value={1}>Once</option>
                                 <option value={2}>Twice</option>
                                 <option value={5}>5 times</option>
+                                <option value="boomerang">Boomerang (forward & back)</option>
                             </select>
                         </div>
                     </div>
