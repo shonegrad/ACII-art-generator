@@ -7,6 +7,7 @@
  */
 
 import GIF from 'gif.js';
+import workerScript from 'gif.js/dist/gif.worker.js?url';
 import { renderAscii } from './asciiRender';
 import type { ColorCell, ConversionOptions } from '@/hooks/useAsciiConverter';
 
@@ -122,6 +123,7 @@ export async function recordKnobGif({
         try {
             gif = new GIF({
                 workers: 2,
+                workerScript,
                 quality: 10,
                 width,
                 height,

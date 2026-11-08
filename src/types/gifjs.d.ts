@@ -1,3 +1,8 @@
+declare module 'gif.js/dist/gif.worker.js?url' {
+    const src: string;
+    export default src;
+}
+
 declare module 'gif.js' {
     export interface GIFOptions {
         workers?: number;
